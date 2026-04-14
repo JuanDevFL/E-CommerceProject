@@ -1,0 +1,14 @@
+.app-container {
+  font: "Questrial";
+  padding: 0 24px;
+}
+
+header h1 {
+  font-size: 2rem;
+  margin-bottom: 8px;
+}
+
+header p {
+  color: #555;
+  margin: 0;
+}
