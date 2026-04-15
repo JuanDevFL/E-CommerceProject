@@ -1,9 +1,17 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useState } from 'react';
+import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { fetchProductos } from './api';
+import logoNavBar from './assets/LogoNavBar.svg';
 import Navbar from './components/Navbar.jsx';
+import SiteFooter from './components/SiteFooter.jsx';
+import { curatedProducts, normalizeRemoteProducts } from './data/curatedProducts.js';
+import AdminDashboardPage from './pages/AdminDashboardPage.jsx';
+import AuthPage from './pages/AuthPage.jsx';
+import HomePage from './pages/HomePage.jsx';
 
 const THEME_STORAGE_KEY = 'azami-theme';
 const USER_STORAGE_KEY = 'azami-user';
+const CART_STORAGE_KEY = 'azami-cart';
 
 function getInitialTheme() {
   const stored = localStorage.getItem(THEME_STORAGE_KEY);
@@ -17,49 +25,124 @@ function getInitialTheme() {
 function getInitialUser() {
   const stored = localStorage.getItem(USER_STORAGE_KEY);
   if (!stored) {
-    const defaultUser = { name: 'Camila R.', email: 'camila@azami.com' };
-    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(defaultUser));
-    return defaultUser;
+    return null;
   }
 
   try {
     const parsed = JSON.parse(stored);
     if (parsed?.name && parsed?.email) {
-      return parsed;
+      return {
+        ...parsed,
+        role: parsed.role || 'user',
+        token: parsed.token || '',
+      };
     }
   } catch {
     // If parsing fails, fallback to a default user.
   }
 
-  return { name: 'Camila R.', email: 'camila@azami.com' };
+  return null;
+}
+
+function getInitialCart() {
+  const stored = localStorage.getItem(CART_STORAGE_KEY);
+  if (!stored) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(stored);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function AdminRoute({ user, children }) {
+  if (!user || !user.token) {
+    return <Navigate to="/auth" replace />;
+  }
+
+  if (user.role !== 'admin') {
+    return <Navigate to="/" replace />;
+  }
+
+  return children;
 }
 
 function App() {
-  const [productos, setProductos] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [remoteProducts, setRemoteProducts] = useState([]);
+  const [catalogNotice, setCatalogNotice] = useState('');
+  const [catalogLoading, setCatalogLoading] = useState(true);
   const [theme, setTheme] = useState(getInitialTheme);
   const [user, setUser] = useState(getInitialUser);
+  const [cartItems, setCartItems] = useState(getInitialCart);
+  const [cartNotice, setCartNotice] = useState(null);
+
+  const isAuthPage = location.pathname === '/auth';
+  const isAdminPage = location.pathname.startsWith('/admin');
 
   useEffect(() => {
+    if (isAuthPage) {
+      setCatalogLoading(false);
+      return undefined;
+    }
+
+    let isMounted = true;
+
     async function loadProductos() {
       try {
         const data = await fetchProductos();
-        setProductos(data);
-      } catch (err) {
-        setError('No se pudo cargar la lista de productos.');
+        if (!isMounted) {
+          return;
+        }
+
+        const normalizedProducts = normalizeRemoteProducts(data);
+        setRemoteProducts(normalizedProducts);
+
+        if (normalizedProducts.length === 0) {
+          setCatalogNotice('Mostrando la selección editorial de Azami mientras añadimos más piezas al catálogo en vivo.');
+        }
+      } catch {
+        if (isMounted) {
+          setCatalogNotice('Mostrando la selección editorial de Azami mientras el catálogo en vivo termina de conectarse.');
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setCatalogLoading(false);
+        }
       }
     }
 
     loadProductos();
-  }, []);
 
-  useEffect(() => {
+    return () => {
+      isMounted = false;
+    };
+  }, [isAuthPage]);
+
+  useLayoutEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem(THEME_STORAGE_KEY, theme);
   }, [theme]);
+
+  useEffect(() => {
+    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cartItems));
+  }, [cartItems]);
+
+  useEffect(() => {
+    if (!cartNotice) {
+      return undefined;
+    }
+
+    const timer = window.setTimeout(() => {
+      setCartNotice(null);
+    }, 2600);
+
+    return () => window.clearTimeout(timer);
+  }, [cartNotice]);
 
   const toggleTheme = () => {
     setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
@@ -68,113 +151,173 @@ function App() {
   const handleLogout = () => {
     setUser(null);
     localStorage.removeItem(USER_STORAGE_KEY);
+    navigate('/');
   };
 
-  const handleLogin = () => {
-    const nextUser = { name: 'Camila R.', email: 'camila@azami.com' };
-    setUser(nextUser);
-    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(nextUser));
+  const handleAuthSuccess = (nextUser) => {
+    const normalizedUser = {
+      id: nextUser.id,
+      name: nextUser.nombre || nextUser.name,
+      email: nextUser.email,
+      role: nextUser.rol || nextUser.role || 'user',
+      token: nextUser.token || '',
+      authSource: nextUser.authSource || 'database',
+    };
+
+    setUser(normalizedUser);
+    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(normalizedUser));
   };
+
+  const handleOpenAuth = () => {
+    navigate('/auth');
+  };
+
+  const handleAdminProductCreated = (product) => {
+    const [normalizedProduct] = normalizeRemoteProducts([product]);
+
+    if (!normalizedProduct) {
+      return;
+    }
+
+    setRemoteProducts((currentProducts) => [
+      normalizedProduct,
+      ...currentProducts.filter((item) => item.id !== normalizedProduct.id),
+    ]);
+  };
+
+  const handleAddToCart = (product) => {
+    if (product.stock === 0) {
+      return;
+    }
+
+    setCartItems((currentItems) => {
+      const existingItem = currentItems.find((item) => item.id === product.id);
+
+      if (existingItem) {
+        return currentItems.map((item) => (
+          item.id === product.id
+            ? { ...item, quantity: Math.min(item.quantity + 1, Math.max(product.stock, 1)) }
+            : item
+        ));
+      }
+
+      return [
+        ...currentItems,
+        {
+          id: product.id,
+          nombre: product.nombre,
+          precio: product.precio,
+          imagen_url: product.imagen_url,
+          tono: product.tono,
+          stock: product.stock,
+          quantity: 1,
+        },
+      ];
+    });
+
+    setCartNotice({
+      id: `${product.id}-${Date.now()}`,
+      text: `${product.nombre} se agregó al carrito correctamente.`,
+    });
+  };
+
+  const handleIncrementCartItem = (productId) => {
+    setCartItems((currentItems) => currentItems.map((item) => (
+      item.id === productId
+        ? { ...item, quantity: Math.min(item.quantity + 1, Math.max(item.stock, 1)) }
+        : item
+    )));
+  };
+
+  const handleDecrementCartItem = (productId) => {
+    setCartItems((currentItems) => currentItems.flatMap((item) => {
+      if (item.id !== productId) {
+        return item;
+      }
+
+      if (item.quantity <= 1) {
+        return [];
+      }
+
+      return { ...item, quantity: item.quantity - 1 };
+    }));
+  };
+
+  const handleRemoveCartItem = (productId) => {
+    setCartItems((currentItems) => currentItems.filter((item) => item.id !== productId));
+  };
+
+  const catalogProducts = remoteProducts.length > 0 ? remoteProducts : curatedProducts;
+  const cartCount = cartItems.reduce((total, item) => total + item.quantity, 0);
+  const cartSubtotal = cartItems.reduce((total, item) => total + (item.precio * item.quantity), 0);
 
   return (
-    <div className="min-h-screen bg-background text-text">
-      <div className="w-full">
-        <main>
-          <section className="w-full bg-background-alt px-4 py-8 sm:px-8 sm:py-12 lg:px-12">
-            <div className="mx-auto w-full max-w-7xl">
-              <Navbar
-                user={user}
-                theme={theme}
-                onToggleTheme={toggleTheme}
-                onLogout={handleLogout}
-                onLogin={handleLogin}
-              />
+    <div className="site-shell bg-background text-text">
+      <header className="site-header">
+        {isAuthPage ? (
+          <div className="site-header-inner auth-header-shell">
+            <Link to="/" className="auth-header-brand">
+              <img src={logoNavBar} alt="Logo Azami" className="brand-logo" />
+              <span className="text-xl font-semibold uppercase tracking-[0.28em] text-primary sm:text-2xl">AZAMI</span>
+            </Link>
 
-              <div className="mx-auto mt-14 max-w-3xl text-center sm:mt-16">
-                <p className="text-sm uppercase tracking-[0.4em] text-muted">Lujo artesanal</p>
-                <h1 className="mt-6 text-4xl font-semibold tracking-tight text-heading sm:text-6xl">
-                  Lujo artesanal
-                </h1>
-                <p className="mt-5 text-xs uppercase tracking-[0.35em] text-primary/90 sm:text-base sm:tracking-[0.4em]">
-                  Bolsos · Accesorios · Colección 2025
-                </p>
+            <Link to="/" className="btn-secondary rounded-full px-5 py-3 text-sm font-semibold">
+              Volver al inicio
+            </Link>
+          </div>
+        ) : (
+          <div className="site-header-inner">
+            <Navbar
+              user={user}
+              theme={theme}
+              cartItems={cartItems}
+              cartCount={cartCount}
+              cartSubtotal={cartSubtotal}
+              onToggleTheme={toggleTheme}
+              onLogout={handleLogout}
+              onOpenAuth={handleOpenAuth}
+              onIncrementCartItem={handleIncrementCartItem}
+              onDecrementCartItem={handleDecrementCartItem}
+              onRemoveCartItem={handleRemoveCartItem}
+            />
+          </div>
+        )}
+      </header>
 
-                <div className="mt-10 flex flex-wrap justify-center gap-3">
-                  <button type="button" className="pill-chip pill-chip-active">Crema</button>
-                  <button type="button" className="pill-chip">Borgoña</button>
-                  <button type="button" className="pill-chip">Marfil</button>
-                  <button type="button" className="pill-chip">Negro</button>
-                </div>
-              </div>
-            </div>
-          </section>
+      {cartNotice && !isAuthPage && !isAdminPage && (
+        <div key={cartNotice.id} className="cart-toast" aria-live="polite" aria-atomic="true">
+          <p className="cart-toast-title">Carrito actualizado</p>
+          <p className="cart-toast-text">{cartNotice.text}</p>
+        </div>
+      )}
 
-          <section id="about" className="w-full bg-surface px-4 py-10 sm:px-8 sm:py-14 lg:px-12">
-            <div className="mx-auto w-full max-w-7xl">
-              <div className="max-w-2xl">
-                <p className="text-sm uppercase tracking-[0.32em] text-muted">Nueva colección</p>
-                <h2 className="mt-4 text-4xl font-semibold tracking-tight text-heading sm:text-5xl">Hecha para durar</h2>
-                <p className="mt-5 max-w-xl text-base leading-7 text-muted">
-                  Descubre diseños artesanales pensados para acompañarte con estilo y durabilidad.
-                </p>
-                <a
-                  href="#productos"
-                  className="mt-8 inline-flex items-center justify-center gap-2 rounded-full bg-background-alt px-6 py-3 text-sm font-semibold text-surface transition hover:bg-background"
-                >
-                  Ver colección →
-                </a>
-              </div>
-            </div>
-          </section>
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <HomePage
+              catalogProducts={catalogProducts}
+              catalogNotice={catalogNotice}
+              catalogLoading={catalogLoading}
+              onAddToCart={handleAddToCart}
+            />
+          }
+        />
+        <Route
+          path="/auth"
+          element={user ? <Navigate to={user.role === 'admin' && user.token ? '/admin' : '/'} replace /> : <AuthPage onAuthSuccess={handleAuthSuccess} />}
+        />
+        <Route
+          path="/admin"
+          element={
+            <AdminRoute user={user}>
+              <AdminDashboardPage user={user} onProductCreated={handleAdminProductCreated} />
+            </AdminRoute>
+          }
+        />
+      </Routes>
 
-          <section id="contacto" className="w-full bg-background-alt px-4 py-10 sm:px-8 sm:py-12 lg:px-12">
-            <div className="mx-auto w-full max-w-7xl">
-              <div className="max-w-xl">
-                <p className="text-sm uppercase tracking-[0.32em] text-muted">Contacto</p>
-                <h2 className="mt-3 text-3xl font-semibold text-heading sm:text-4xl">Creamos piezas para tu estilo</h2>
-                <p className="mt-4 text-sm text-muted sm:text-base">
-                  Escríbenos para pedidos personalizados, colaboraciones o atención postventa.
-                </p>
-                <a
-                  href="mailto:contacto@azami.com"
-                  className="btn-primary mt-7 inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold"
-                >
-                  contacto@azami.com
-                </a>
-              </div>
-            </div>
-          </section>
-
-          {loading && <p className="mt-8 text-center text-muted">Cargando productos...</p>}
-          {error && <p className="mt-8 text-center text-danger">{error}</p>}
-
-          {!loading && !error && (
-            <section id="productos" className="mx-auto mt-10 grid w-full max-w-7xl gap-6 px-4 pb-10 sm:grid-cols-2 sm:px-8 xl:grid-cols-3 lg:px-12">
-              {productos.length === 0 ? (
-                <p className="text-center text-muted">No hay productos disponibles.</p>
-              ) : (
-                productos.map((producto) => (
-                  <article key={producto.id} className="overflow-hidden rounded-3xl bg-surface p-6 shadow-soft">
-                    {producto.imagen_url && (
-                      <img className="mb-6 h-52 w-full rounded-3xl object-cover" src={producto.imagen_url} alt={producto.nombre} />
-                    )}
-                    <div className="space-y-4">
-                      <div>
-                        <h2 className="text-2xl font-semibold text-heading">{producto.nombre}</h2>
-                        <p className="mt-2 text-muted">{producto.descripcion}</p>
-                      </div>
-                      <div className="flex items-center justify-between gap-4 text-text">
-                        <span className="text-xl font-bold text-primary">${producto.precio}</span>
-                        <span className="rounded-full bg-surface-alt px-3 py-1 text-sm text-muted">{producto.stock} en stock</span>
-                      </div>
-                    </div>
-                  </article>
-                ))
-              )}
-            </section>
-          )}
-        </main>
-      </div>
+      {!isAuthPage && !isAdminPage && <SiteFooter />}
     </div>
   );
 }

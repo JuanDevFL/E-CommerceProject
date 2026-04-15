@@ -8,8 +8,16 @@ Proyecto inicial para un e-commerce con backend en Node.js + Express y frontend 
 1. Abrir `backend`
 2. Ejecutar `npm install`
 3. Copiar `backend/.env.example` a `backend/.env` y ajustar la configuración de MySQL
-4. Crear la base de datos y tablas con `backend/db/schema.sql`
-5. Ejecutar `npm run dev`
+4. Configurar `JWT_SECRET` para las sesiones del backend
+5. Crear la base de datos y tablas con `backend/db/schema.sql`
+6. Ejecutar `npm run seed` para sembrar el catálogo base de Azami
+7. Ejecutar `npm run seed:users` para crear las credenciales base de admin y usuario
+8. Ejecutar `npm run dev`
+
+## Modo de prueba para login
+
+- Si quieres probar solo el inicio de sesión sin depender de MySQL, cambia `AUTH_LOGIN_MODE=mock` en `backend/.env`.
+- El backend seguirá exponiendo `POST /api/usuarios/login`, pero validará las credenciales mock configuradas en el `.env`.
 
 ### Frontend
 1. Abrir `frontend`

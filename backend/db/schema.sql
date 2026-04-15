@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
   nombre VARCHAR(255) NOT NULL,
   email VARCHAR(255) NOT NULL UNIQUE,
   password VARCHAR(255) NOT NULL,
+  rol ENUM('user', 'admin') NOT NULL DEFAULT 'user',
   creado_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -16,6 +17,10 @@ CREATE TABLE IF NOT EXISTS productos (
   precio DECIMAL(10,2) NOT NULL,
   imagen_url VARCHAR(500),
   stock INT DEFAULT 0,
+  categoria VARCHAR(120) DEFAULT 'Colección Azami',
+  tono VARCHAR(120) DEFAULT 'Crema',
+  material VARCHAR(120) DEFAULT 'Cuero premium',
+  etiqueta VARCHAR(120) DEFAULT 'Online',
   creado_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

@@ -1,0 +1,525 @@
+.admin-page {
+  width: 100%;
+  padding: 1.4rem 1rem 2.2rem;
+}
+
+.admin-shell {
+  width: min(100%, 88rem);
+  margin: 0 auto;
+  display: grid;
+  gap: 1.25rem;
+}
+
+.admin-hero,
+.admin-panel,
+.admin-loading-card,
+.admin-feedback {
+  border: 1px solid color-mix(in srgb, var(--color-border) 74%, transparent 26%);
+  background: color-mix(in srgb, var(--color-panel) 88%, transparent 12%);
+  box-shadow: var(--color-shadow);
+  backdrop-filter: blur(18px);
+}
+
+.admin-hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1.25rem;
+  padding: clamp(1.35rem, 2.6vw, 2rem);
+  border-radius: 2rem;
+  background-image: linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 18%, transparent), color-mix(in srgb, var(--color-background-alt) 82%, transparent));
+}
+
+.admin-eyebrow,
+.admin-panel-kicker,
+.admin-kpi-label {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
+  font-size: 0.74rem;
+  color: var(--color-primary);
+}
+
+.admin-hero h1,
+.admin-panel h2,
+.admin-featured-copy h3,
+.admin-empty-state h3 {
+  margin: 0;
+  color: var(--color-heading);
+}
+
+.admin-hero h1 {
+  max-width: 34rem;
+  font-size: clamp(2rem, 3vw, 3.2rem);
+  line-height: 1.05;
+}
+
+.admin-hero-copy,
+.admin-featured-copy p,
+.admin-kpi-card p,
+.admin-health-card p,
+.admin-alert-card p,
+.admin-empty-state p,
+.admin-order-item p,
+.admin-user-item p,
+.admin-user-item small,
+.admin-category-item small,
+.admin-products-table small,
+.admin-loading-card p,
+.admin-feedback {
+  margin: 0;
+  color: var(--color-text);
+  line-height: 1.6;
+}
+
+.admin-hero-copy {
+  margin-top: 0.9rem;
+  max-width: 42rem;
+}
+
+.admin-hero-meta {
+  display: grid;
+  gap: 0.55rem;
+  justify-items: end;
+}
+
+.admin-meta-pill,
+.admin-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.6rem 0.9rem;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--color-background-alt) 70%, #ffffff 30%);
+  border: 1px solid color-mix(in srgb, var(--color-border) 78%, transparent 22%);
+  color: var(--color-heading);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.admin-feedback,
+.admin-loading-card {
+  border-radius: 1.4rem;
+  padding: 1rem 1.15rem;
+}
+
+.admin-feedback.is-success {
+  border-color: color-mix(in srgb, var(--color-primary) 46%, var(--color-border) 54%);
+}
+
+.admin-feedback.is-error {
+  border-color: color-mix(in srgb, var(--color-danger) 48%, var(--color-border) 52%);
+  color: var(--color-danger);
+}
+
+.admin-kpi-grid,
+.admin-report-grid,
+.admin-management-grid,
+.admin-health-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.admin-kpi-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.admin-kpi-card {
+  padding: 1.2rem;
+  border-radius: 1.6rem;
+  border: 1px solid color-mix(in srgb, var(--color-border) 68%, transparent 32%);
+  background: linear-gradient(160deg, color-mix(in srgb, var(--color-background-alt) 74%, transparent 26%), color-mix(in srgb, var(--color-surface) 78%, transparent 22%));
+}
+
+.admin-kpi-card strong {
+  display: block;
+  margin-top: 0.65rem;
+  color: var(--color-heading);
+  font-size: clamp(1.8rem, 2.4vw, 2.4rem);
+}
+
+.admin-kpi-card p {
+  margin-top: 0.55rem;
+}
+
+.admin-kpi-card-accent {
+  background: linear-gradient(160deg, color-mix(in srgb, var(--color-primary) 18%, transparent), color-mix(in srgb, var(--color-background-alt) 82%, transparent));
+}
+
+.admin-report-grid {
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.9fr);
+}
+
+.admin-report-grid-secondary,
+.admin-management-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.admin-panel,
+.admin-products-panel {
+  border-radius: 1.8rem;
+  padding: 1.25rem;
+}
+
+.admin-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.admin-featured-card {
+  display: grid;
+  grid-template-columns: minmax(16rem, 0.8fr) minmax(0, 1fr);
+  gap: 1rem;
+}
+
+.admin-featured-media {
+  min-height: 18rem;
+  border-radius: 1.5rem;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--color-background-alt) 80%, transparent 20%);
+}
+
+.admin-featured-media img,
+.admin-featured-placeholder {
+  width: 100%;
+  height: 100%;
+}
+
+.admin-featured-media img {
+  object-fit: cover;
+}
+
+.admin-featured-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-muted);
+}
+
+.admin-featured-copy {
+  display: grid;
+  gap: 1rem;
+}
+
+.admin-featured-copy h3 {
+  margin-top: 0.7rem;
+  font-size: 1.7rem;
+}
+
+.admin-featured-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 0;
+}
+
+.admin-featured-stats div,
+.admin-health-card,
+.admin-alert-card,
+.admin-order-item,
+.admin-category-item,
+.admin-user-item {
+  border-radius: 1.2rem;
+  border: 1px solid color-mix(in srgb, var(--color-border) 66%, transparent 34%);
+  background: color-mix(in srgb, var(--color-background-alt) 76%, transparent 24%);
+}
+
+.admin-featured-stats div {
+  padding: 0.9rem;
+}
+
+.admin-featured-stats dt,
+.admin-featured-stats dd {
+  margin: 0;
+}
+
+.admin-featured-stats dt {
+  color: var(--color-muted);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.admin-featured-stats dd {
+  margin-top: 0.35rem;
+  color: var(--color-heading);
+  font-weight: 700;
+}
+
+.admin-health-grid,
+.admin-alert-list,
+.admin-orders-list,
+.admin-category-list,
+.admin-users-list {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.admin-health-card,
+.admin-alert-card,
+.admin-order-item,
+.admin-category-item,
+.admin-user-item {
+  padding: 1rem;
+}
+
+.admin-health-head,
+.admin-category-head,
+.admin-order-item,
+.admin-user-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.admin-health-head strong,
+.admin-category-head strong,
+.admin-order-item strong,
+.admin-user-item strong,
+.admin-products-table strong {
+  color: var(--color-heading);
+}
+
+.admin-progress-track {
+  width: 100%;
+  height: 0.7rem;
+  margin: 0.85rem 0 0.65rem;
+  border-radius: 9999px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--color-border) 78%, transparent 22%);
+}
+
+.admin-progress-track.compact {
+  height: 0.55rem;
+  margin-bottom: 0.45rem;
+}
+
+.admin-progress-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--color-primary), var(--color-primary-dark));
+}
+
+.admin-progress-fill.is-soft {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--color-primary) 68%, #ffffff 32%), var(--color-primary-dark));
+}
+
+.admin-alert-card.is-neutral {
+  background: color-mix(in srgb, var(--color-surface) 78%, transparent 22%);
+}
+
+.admin-order-meta {
+  display: grid;
+  justify-items: end;
+  gap: 0.25rem;
+}
+
+.admin-order-meta span {
+  color: var(--color-heading);
+  font-weight: 700;
+}
+
+.admin-product-form {
+  display: grid;
+  gap: 1rem;
+}
+
+.admin-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.admin-field {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.admin-field-wide {
+  grid-column: 1 / -1;
+}
+
+.admin-field span {
+  color: var(--color-heading);
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.admin-field input,
+.admin-field textarea,
+.admin-user-controls select {
+  width: 100%;
+  border-radius: 1rem;
+  border: 1px solid color-mix(in srgb, var(--color-border) 82%, transparent 18%);
+  background: color-mix(in srgb, var(--color-background) 84%, #ffffff 16%);
+  color: var(--color-text);
+  padding: 0.9rem 1rem;
+  outline: none;
+}
+
+.admin-field textarea {
+  resize: vertical;
+  min-height: 8rem;
+}
+
+.admin-field input:focus,
+.admin-field textarea:focus,
+.admin-user-controls select:focus {
+  border-color: color-mix(in srgb, var(--color-primary) 62%, var(--color-border) 38%);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 16%, transparent);
+}
+
+.admin-primary-button,
+.admin-secondary-button {
+  border: 0;
+  border-radius: 9999px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 220ms ease, filter 220ms ease, opacity 220ms ease;
+}
+
+.admin-primary-button {
+  justify-self: start;
+  padding: 0.95rem 1.35rem;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
+  color: var(--button-text);
+  box-shadow: var(--button-glow);
+}
+
+.admin-secondary-button {
+  padding: 0.78rem 1rem;
+  background: color-mix(in srgb, var(--color-background-alt) 78%, #ffffff 22%);
+  color: var(--color-heading);
+  border: 1px solid color-mix(in srgb, var(--color-border) 76%, transparent 24%);
+}
+
+.admin-primary-button:hover,
+.admin-secondary-button:hover,
+.admin-primary-button:focus-visible,
+.admin-secondary-button:focus-visible {
+  transform: translateY(-2px);
+  filter: brightness(1.03);
+}
+
+.admin-primary-button:disabled,
+.admin-secondary-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  transform: none;
+}
+
+.admin-user-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.admin-products-table-wrap {
+  overflow-x: auto;
+}
+
+.admin-products-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.admin-products-table th,
+.admin-products-table td {
+  padding: 0.9rem 0.8rem;
+  text-align: left;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 56%, transparent 44%);
+}
+
+.admin-products-table th {
+  color: var(--color-muted);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
+
+.admin-products-table td small {
+  display: block;
+  margin-top: 0.2rem;
+}
+
+.admin-empty-state {
+  padding: 1rem;
+  border-radius: 1.2rem;
+  background: color-mix(in srgb, var(--color-background-alt) 78%, transparent 22%);
+}
+
+.admin-empty-state.compact {
+  padding: 0.9rem 1rem;
+}
+
+@media (max-width: 1100px) {
+  .admin-kpi-grid,
+  .admin-report-grid,
+  .admin-report-grid-secondary,
+  .admin-management-grid,
+  .admin-featured-card,
+  .admin-featured-stats,
+  .admin-form-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .admin-featured-card,
+  .admin-report-grid,
+  .admin-report-grid-secondary,
+  .admin-management-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .admin-page {
+    padding-inline: 0.9rem;
+  }
+
+  .admin-hero,
+  .admin-health-head,
+  .admin-category-head,
+  .admin-order-item,
+  .admin-user-item,
+  .admin-user-controls {
+    align-items: flex-start;
+  }
+
+  .admin-hero,
+  .admin-hero-meta,
+  .admin-health-head,
+  .admin-category-head,
+  .admin-order-item,
+  .admin-user-item,
+  .admin-user-controls {
+    flex-direction: column;
+  }
+
+  .admin-hero-meta,
+  .admin-order-meta {
+    justify-items: start;
+  }
+
+  .admin-kpi-grid,
+  .admin-featured-stats,
+  .admin-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-panel,
+  .admin-products-panel,
+  .admin-kpi-card {
+    padding: 1rem;
+  }
+
+  .admin-products-table th,
+  .admin-products-table td {
+    min-width: 8rem;
+  }
+}

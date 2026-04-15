@@ -11,12 +11,51 @@ export async function getProductos(req, res, next) {
 
 export async function createProducto(req, res, next) {
   try {
-    const { nombre, descripcion, precio, imagen_url, stock } = req.body;
+    const nombre = req.body.nombre?.trim();
+    const descripcion = req.body.descripcion?.trim() || '';
+    const imagen_url = req.body.imagen_url?.trim() || '';
+    const categoria = req.body.categoria?.trim() || 'Colección Azami';
+    const tono = req.body.tono?.trim() || 'Crema';
+    const material = req.body.material?.trim() || 'Cuero premium';
+    const etiqueta = req.body.etiqueta?.trim() || 'Online';
+    const precio = Number(req.body.precio);
+    const stock = Number.isFinite(Number(req.body.stock)) ? Math.max(0, Number(req.body.stock)) : 0;
+
+    if (!nombre) {
+      return res.status(400).json({ error: 'El nombre del producto es obligatorio' });
+    }
+
+    if (!Number.isFinite(precio) || precio <= 0) {
+      return res.status(400).json({ error: 'El precio debe ser mayor a 0' });
+    }
+
     const [result] = await pool.query(
-      'INSERT INTO productos (nombre, descripcion, precio, imagen_url, stock) VALUES (?, ?, ?, ?, ?)',
-      [nombre, descripcion, precio, imagen_url, stock || 0]
+      `INSERT INTO productos (nombre, descripcion, precio, imagen_url, stock, categoria, tono, material, etiqueta)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        nombre,
+        descripcion,
+        precio,
+        imagen_url,
+        stock || 0,
+        categoria || 'Colección Azami',
+        tono || 'Crema',
+        material || 'Cuero premium',
+        etiqueta || 'Online',
+      ]
     );
-    res.status(201).json({ id: result.insertId, nombre, descripcion, precio, imagen_url, stock: stock || 0 });
+    res.status(201).json({
+      id: result.insertId,
+      nombre,
+      descripcion,
+      precio,
+      imagen_url,
+      stock: stock || 0,
+      categoria: categoria || 'Colección Azami',
+      tono: tono || 'Crema',
+      material: material || 'Cuero premium',
+      etiqueta: etiqueta || 'Online',
+    });
   } catch (error) {
     next(error);
   }
