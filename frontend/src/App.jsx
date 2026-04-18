@@ -16,10 +16,13 @@ import logoNavBar from './assets/LogoNavBar.svg';
 
 const THEME_STORAGE_KEY = 'azami-theme';
 const USER_STORAGE_KEY = 'azami-user';
-const WISHLIST_STORAGE_KEY = 'azami-wishlist';
 
 function cartKeyForUser(user) {
   return user?.id ? `azami-cart-${user.id}` : null;
+}
+
+function wishlistKeyForUser(user) {
+  return user?.id ? `azami-wishlist-${user.id}` : null;
 }
 
 function loadPersistedArray(key) {
@@ -93,7 +96,8 @@ function App() {
     return loadPersistedArray(cartKeyForUser(initial));
   });
   const [wishlistIds, setWishlistIds] = useState(() => {
-    return loadPersistedArray(WISHLIST_STORAGE_KEY);
+    const initial = getInitialUser();
+    return loadPersistedArray(wishlistKeyForUser(initial));
   });
   const [cartNotice, setCartNotice] = useState(null);
   const [pageTransition, setPageTransition] = useState(false);
@@ -105,6 +109,7 @@ function App() {
   useEffect(() => {
     if (location.pathname !== prevPathRef.current) {
       prevPathRef.current = location.pathname;
+      window.scrollTo(0, 0);
       setPageTransition(true);
       const timer = setTimeout(() => setPageTransition(false), 600);
       return () => clearTimeout(timer);
@@ -163,8 +168,11 @@ function App() {
   }, [cartItems, user]);
 
   useEffect(() => {
-    localStorage.setItem(WISHLIST_STORAGE_KEY, JSON.stringify(wishlistIds));
-  }, [wishlistIds]);
+    const key = wishlistKeyForUser(user);
+    if (key) {
+      localStorage.setItem(key, JSON.stringify(wishlistIds));
+    }
+  }, [wishlistIds, user]);
 
   useEffect(() => {
     if (!cartNotice) {
@@ -185,6 +193,7 @@ function App() {
   const handleLogout = () => {
     setUser(null);
     setCartItems([]);
+    setWishlistIds([]);
     localStorage.removeItem(USER_STORAGE_KEY);
     navigate('/');
   };
@@ -202,6 +211,7 @@ function App() {
     setUser(normalizedUser);
     localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(normalizedUser));
     setCartItems(loadPersistedArray(cartKeyForUser(normalizedUser)));
+    setWishlistIds(loadPersistedArray(wishlistKeyForUser(normalizedUser)));
   };
 
   const handleOpenAuth = () => {
