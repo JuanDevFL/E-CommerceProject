@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { fetchProductos } from './api';
 import Navbar from './components/Navbar.jsx';
@@ -12,6 +12,7 @@ import HomePage from './pages/HomePage.jsx';
 import ProductDetailPage from './pages/ProductDetailPage.jsx';
 import ResetPasswordPage from './pages/ResetPasswordPage.jsx';
 import WishlistPage from './pages/WishlistPage.jsx';
+import logoNavBar from './assets/LogoNavBar.svg';
 
 const THEME_STORAGE_KEY = 'azami-theme';
 const USER_STORAGE_KEY = 'azami-user';
@@ -95,9 +96,20 @@ function App() {
     return loadPersistedArray(WISHLIST_STORAGE_KEY);
   });
   const [cartNotice, setCartNotice] = useState(null);
+  const [pageTransition, setPageTransition] = useState(false);
+  const prevPathRef = useRef(location.pathname);
 
   const isAuthPage = location.pathname === '/auth' || location.pathname.startsWith('/reset-password');
   const isAdminPage = location.pathname.startsWith('/admin');
+
+  useEffect(() => {
+    if (location.pathname !== prevPathRef.current) {
+      prevPathRef.current = location.pathname;
+      setPageTransition(true);
+      const timer = setTimeout(() => setPageTransition(false), 600);
+      return () => clearTimeout(timer);
+    }
+  }, [location.pathname]);
 
   useEffect(() => {
     if (isAuthPage) {
@@ -293,6 +305,11 @@ function App() {
 
   return (
     <div className="site-shell bg-background text-text">
+      <div className={`page-transition-overlay ${pageTransition ? 'active' : ''}`} aria-hidden="true">
+        <img src={logoNavBar} alt="" className="page-transition-logo" />
+        <span className="page-transition-title">AZAMI</span>
+      </div>
+
       <header className="site-header">
         <div className="site-header-inner">
           <Navbar
@@ -375,6 +392,20 @@ function App() {
       </Routes>
 
       {!isAuthPage && !isAdminPage && <SiteFooter />}
+
+      {!isAdminPage && (
+        <a
+          href="https://wa.me/573002454123?text=Hola%2C%20me%20interesa%20saber%20m%C3%A1s%20sobre%20los%20productos%20de%20Azami"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="whatsapp-fab"
+          aria-label="Chatea con nosotros por WhatsApp"
+        >
+          <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" className="whatsapp-fab-icon">
+            <path d="M16.004 2.002C8.28 2.002 2.004 8.278 2.004 15.998c0 2.478.648 4.892 1.88 7.024L2 30l7.168-1.876A13.946 13.946 0 0 0 16.004 30c7.72 0 13.996-6.276 13.996-13.998S23.724 2.002 16.004 2.002Zm0 25.596a11.56 11.56 0 0 1-5.892-1.612l-.424-.252-4.252 1.116 1.136-4.148-.276-.44a11.52 11.52 0 0 1-1.768-6.164c0-6.392 5.2-11.592 11.596-11.592 6.392 0 11.592 5.2 11.592 11.592-.004 6.392-5.32 11.5-11.712 11.5Zm6.356-8.672c-.348-.176-2.064-1.02-2.384-1.136-.32-.116-.552-.176-.784.176-.232.348-.9 1.136-1.1 1.368-.204.232-.404.26-.752.088-.348-.176-1.468-.54-2.796-1.724-1.032-.92-1.732-2.056-1.932-2.404-.204-.348-.02-.536.152-.708.156-.156.348-.404.52-.608.176-.204.232-.348.348-.58.116-.232.06-.436-.028-.608-.088-.176-.784-1.892-1.076-2.588-.284-.68-.572-.588-.784-.6-.204-.008-.436-.012-.668-.012-.232 0-.608.088-.928.436-.32.348-1.22 1.192-1.22 2.908s1.248 3.376 1.424 3.608c.176.232 2.46 3.752 5.96 5.264.832.36 1.484.576 1.992.736.836.264 1.6.228 2.2.14.672-.1 2.064-.844 2.356-1.66.288-.816.288-1.516.204-1.66-.088-.148-.32-.232-.668-.404Z" fill="currentColor"/>
+          </svg>
+        </a>
+      )}
     </div>
   );
 }

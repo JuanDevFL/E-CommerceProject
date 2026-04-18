@@ -107,7 +107,7 @@ function HomePage() {
         </div>
       </section>
 
-      <section className="site-section bg-background py-10 sm:py-14">
+      <section className="site-section featured-section py-10 sm:py-14">
         <div className="site-section-inner">
           <div className="text-center mb-8">
             <p className="text-sm uppercase tracking-[0.32em] text-muted">Selección curada</p>
