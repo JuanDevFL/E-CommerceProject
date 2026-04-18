@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 
 function formatPrice(value) {
   return new Intl.NumberFormat('es-MX', {
@@ -8,7 +9,7 @@ function formatPrice(value) {
   }).format(value);
 }
 
-function ProductCatalog({ products, notice, isLoading, onAddToCart }) {
+function ProductCatalog({ products, notice, isLoading, wishlistIds = [], onAddToCart, onToggleWishlist }) {
   const [activeCategory, setActiveCategory] = useState('Todos');
   const [activeTone, setActiveTone] = useState('Todos');
   const [onlyAvailable, setOnlyAvailable] = useState(true);
@@ -113,11 +114,23 @@ function ProductCatalog({ products, notice, isLoading, onAddToCart }) {
           {filteredProducts.map((product) => (
             <article key={product.id} className="product-card">
               <div className="product-card-media">
-                <img src={product.imagen_url} alt={product.nombre} className="product-card-image" loading="lazy" decoding="async" referrerPolicy="no-referrer" />
+                <Link to={`/producto/${product.id}`}>
+                  <img src={product.imagen_url} alt={product.nombre} className="product-card-image" loading="lazy" decoding="async" referrerPolicy="no-referrer" />
+                </Link>
                 <div className="product-card-badges">
                   <span className="product-badge product-badge-primary">{product.etiqueta}</span>
                   <span className="product-badge">{product.categoria}</span>
                 </div>
+                <button
+                  type="button"
+                  className={`btn-wishlist-heart ${wishlistIds.includes(product.id) ? 'is-active' : ''}`}
+                  aria-label={wishlistIds.includes(product.id) ? 'Quitar de deseos' : 'Agregar a deseos'}
+                  onClick={() => onToggleWishlist(product.id)}
+                >
+                  <svg viewBox="0 0 24 24" width="22" height="22" fill={wishlistIds.includes(product.id) ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2">
+                    <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
+                  </svg>
+                </button>
               </div>
 
               <div className="product-card-body">
@@ -127,7 +140,9 @@ function ProductCatalog({ products, notice, isLoading, onAddToCart }) {
                 </div>
 
                 <div className="product-card-header">
-                  <h3 className="product-card-title">{product.nombre}</h3>
+                  <h3 className="product-card-title">
+                    <Link to={`/producto/${product.id}`}>{product.nombre}</Link>
+                  </h3>
                   <span className="product-card-price">{formatPrice(product.precio)}</span>
                 </div>
 

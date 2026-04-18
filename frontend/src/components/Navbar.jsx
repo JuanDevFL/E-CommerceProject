@@ -54,6 +54,12 @@ function Icon({ type, className = 'nav-icon' }) {
           <path d="M17.66 6.34L19.07 4.93" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
         </svg>
       );
+    case 'moon':
+      return (
+        <svg {...commonProps}>
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      );
     case 'logout':
       return (
         <svg {...commonProps}>
@@ -76,6 +82,22 @@ function Icon({ type, className = 'nav-icon' }) {
           <path d="M4 6H6L8.2 16.2C8.29 16.65 8.63 17 9.08 17H17.55C17.98 17 18.35 16.7 18.45 16.28L20 9H7.1" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
           <circle cx="10" cy="20" r="1.35" fill="currentColor" />
           <circle cx="17" cy="20" r="1.35" fill="currentColor" />
+        </svg>
+      );
+    case 'home':
+      return (
+        <svg {...commonProps}>
+          <path d="M3 10.5L12 3L21 10.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M5 9.5V19C5 19.5523 5.44772 20 6 20H9V15C9 14.4477 9.44772 14 10 14H14C14.5523 14 15 14.4477 15 15V20H18C18.5523 20 19 19.5523 19 19V9.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      );
+    case 'dashboard':
+      return (
+        <svg {...commonProps}>
+          <rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.8" />
+          <rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.8" />
+          <rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.8" />
+          <rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.8" />
         </svg>
       );
     default:
@@ -123,56 +145,110 @@ function Navbar({
     {
       label: 'Colecciones',
       subOptions: [
-        { label: 'Bolsos premium', href: '#productos' },
-        { label: 'Accesorios', href: '#productos' },
-        { label: 'Edicion 2025', href: '#productos' }
+        { label: 'Bolsos premium', route: '/catalogo' },
+        { label: 'Accesorios', route: '/catalogo' },
+        { label: 'Edicion 2025', route: '/catalogo' }
       ]
     },
     {
       label: 'Nosotros',
       subOptions: [
-        { label: 'Nuestra historia', href: '#about' },
-        { label: 'Materiales', href: '#about' },
-        { label: 'Proceso artesanal', href: '#about' }
+        { label: 'Nuestra historia', route: '/nosotros' },
+        { label: 'Materiales', route: '/nosotros' },
+        { label: 'Proceso artesanal', route: '/nosotros' }
       ]
     },
     {
       label: 'Contacto',
       subOptions: [
-        { label: 'Atencion directa', href: '#contacto' },
-        { label: 'Pedidos especiales', href: '#contacto' },
-        { label: 'Postventa', href: '#contacto' }
+        { label: 'Atencion directa', route: '/nosotros' },
+        { label: 'Pedidos especiales', route: '/nosotros' },
+        { label: 'Postventa', route: '/nosotros' }
       ]
     }
   ];
 
   return (
-    <nav className="navbar relative flex w-full items-center justify-between gap-3 py-3 sm:gap-4 sm:py-4">
+    <nav className="navbar relative flex w-full items-center py-3">
       <div className="navbar-brand min-w-0 flex items-center gap-2 sm:gap-3">
         <img src={logoNavBar} alt="Logo Azami" className="brand-logo" />
         <span className="text-xl font-semibold uppercase tracking-[0.28em] text-primary sm:text-2xl">AZAMI</span>
       </div>
 
-      <div className="navbar-actions navbar-desktop-actions hidden shrink-0 items-center gap-3 lg:flex">
-        <button
-          type="button"
-          className="btn-icon btn-menu-trigger rounded-full px-4 py-2.5 text-sm font-semibold"
-          aria-label={isOpen ? 'Cerrar menú' : 'Abrir menú'}
-          aria-expanded={isOpen}
-          onClick={() => {
-            setIsOpen((prev) => !prev);
-            setIsUserPanelOpen(false);
-            setIsCartOpen(false);
-          }}
-        >
-          <Icon type="menu" />
-          Menu
-        </button>
+      <div className="navbar-center-actions hidden lg:flex items-center gap-2">
+        <div className="navbar-menu-anchor">
+          <button
+            type="button"
+            className="nav-icon-btn"
+            aria-label={isOpen ? 'Cerrar menú' : 'Abrir menú'}
+            aria-expanded={isOpen}
+            onClick={() => {
+              setIsOpen((prev) => !prev);
+              setIsUserPanelOpen(false);
+              setIsCartOpen(false);
+            }}
+          >
+            <Icon type="menu" />
+            <span className="nav-icon-tooltip">Menú</span>
+          </button>
+
+          <div
+            className={`fixed inset-0 z-50 navbar-panel fullscreen-menu-panel transition-all duration-300 ${isOpen ? 'opacity-100 scale-100 translate-y-0' : 'pointer-events-none opacity-0 scale-95 -translate-y-2'}`}
+            aria-hidden={!isOpen}
+            onMouseLeave={() => handleDesktopPanelMouseLeave(closeMenu)}
+          >
+            <div className="fullscreen-panel-header">
+              <span className="text-lg font-semibold tracking-[0.24em] text-primary uppercase">Menu</span>
+              <button type="button" className="btn-icon panel-close-button px-4 py-2 text-xs font-semibold" onClick={closeMenu}>Cerrar</button>
+            </div>
+
+            <ul className="fullscreen-menu-list">
+              {menuItems.map((item) => (
+                <li
+                  key={item.label}
+                  className={`menu-item-group ${activeSubmenu === item.label ? 'is-open' : ''}`}
+                  onMouseEnter={() => setActiveSubmenu(item.label)}
+                  onMouseLeave={() => setActiveSubmenu('')}
+                >
+                  <button
+                    type="button"
+                    className="menu-main-btn"
+                    onClick={() => setActiveSubmenu((prev) => (prev === item.label ? '' : item.label))}
+                  >
+                    <span className="menu-main-label">{item.label}</span>
+                    <span className="menu-main-plus">+</span>
+                  </button>
+
+                  <ul className="submenu-list">
+                    {item.subOptions.map((sub) => (
+                      <li key={sub.label}>
+                        {sub.route ? (
+                          <button
+                            type="button"
+                            className="submenu-link"
+                            onClick={() => { closeMenu(); navigate(sub.route); }}
+                          >
+                            {sub.label}
+                          </button>
+                        ) : (
+                          <a href={sub.href} className="submenu-link" onClick={closeMenu}>
+                            {sub.label}
+                          </a>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
 
         <button
           type="button"
-          className="btn-icon btn-cart rounded-full px-4 py-2.5 text-sm font-semibold"
+          className="nav-icon-btn"
           style={{ display: isAdminPage ? 'none' : undefined }}
+          aria-label="Carrito"
           onClick={() => {
             setIsCartOpen((prev) => !prev);
             closeMenu();
@@ -183,13 +259,14 @@ function Navbar({
             <Icon type="cart" />
             {cartCount > 0 && <span className="cart-count-badge">{cartCount}</span>}
           </span>
-          Carrito
+          <span className="nav-icon-tooltip">Carrito</span>
         </button>
 
         {user ? (
           <button
             type="button"
-            className="btn-user inline-flex max-w-[14rem] items-center rounded-full px-5 py-2.5 text-sm font-semibold"
+            className="nav-icon-btn"
+            aria-label={user.name}
             onClick={() => {
               setIsUserPanelOpen(true);
               closeMenu();
@@ -197,19 +274,30 @@ function Navbar({
             }}
           >
             <Icon type="user" />
-            <span className="truncate">{user.name}</span>
+            <span className="nav-icon-tooltip">{user.name}</span>
           </button>
         ) : (
-          <button type="button" className="btn-user rounded-full px-5 py-2.5 text-sm font-semibold" onClick={onOpenAuth}>
+          <button type="button" className="nav-icon-btn" aria-label="Iniciar sesión" onClick={onOpenAuth}>
             <Icon type="user" />
-            Iniciar sesión
+            <span className="nav-icon-tooltip">Iniciar sesión</span>
           </button>
         )}
 
-        {isAdmin && (
+        <button
+          type="button"
+          className="nav-icon-btn"
+          aria-label={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}
+          onClick={onToggleTheme}
+        >
+          <Icon type={theme === 'dark' ? 'sun' : 'moon'} />
+          <span className="nav-icon-tooltip">{theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}</span>
+        </button>
+
+        {isAdmin && !isAdminPage && (
           <button
             type="button"
-            className="btn-nav-action rounded-full px-6 py-3 text-sm font-semibold"
+            className="nav-icon-btn"
+            aria-label="Dashboard"
             onClick={() => {
               closeMenu();
               closeUserPanel();
@@ -217,35 +305,57 @@ function Navbar({
               navigate('/admin');
             }}
           >
-            Dashboard
+            <Icon type="dashboard" />
+            <span className="nav-icon-tooltip">Dashboard</span>
           </button>
         )}
 
-        <button
-          type="button"
-          className="btn-nav-action rounded-full px-6 py-3 text-sm font-semibold"
-          onClick={() => {
-            closeMenu();
-            closeUserPanel();
-            closeCart();
-            navigate('/');
-          }}
-        >
-          {isAdminPage ? 'Volver a tienda' : 'Explorar'}
-        </button>
+        {isAdmin && isAdminPage && (
+          <button
+            type="button"
+            className="nav-icon-btn"
+            aria-label="Volver a tienda"
+            onClick={() => {
+              closeMenu();
+              closeUserPanel();
+              closeCart();
+              navigate('/');
+            }}
+          >
+            <Icon type="home" />
+            <span className="nav-icon-tooltip">Volver a tienda</span>
+          </button>
+        )}
+
+        {!isAdmin && (
+          <button
+            type="button"
+            className="nav-icon-btn"
+            aria-label="Inicio"
+            onClick={() => {
+              closeMenu();
+              closeUserPanel();
+              closeCart();
+              navigate('/');
+            }}
+          >
+            <Icon type="home" />
+            <span className="nav-icon-tooltip">Inicio</span>
+          </button>
+        )}
       </div>
 
-      <div className="navbar-actions navbar-mobile-actions flex min-w-0 shrink-0 items-center gap-2 lg:hidden">
+      <div className="navbar-mobile-actions flex min-w-0 shrink-0 items-center gap-1.5 lg:hidden">
         {!isAdminPage && (
           <button
             type="button"
-            className="btn-icon btn-cart-mobile"
+            className="nav-icon-btn nav-icon-btn-sm"
             onClick={() => {
               setIsCartOpen((prev) => !prev);
               closeMenu();
               closeUserPanel();
             }}
-            aria-label="Abrir carrito"
+            aria-label="Carrito"
           >
             <span className="cart-button-icon-wrap">
               <Icon type="cart" className="nav-icon nav-icon-sm" />
@@ -254,29 +364,37 @@ function Navbar({
           </button>
         )}
 
-        {user && (
+        {user ? (
           <button
             type="button"
-            className="btn-user inline-flex min-w-0 max-w-[11rem] items-center rounded-full px-3 py-2 text-xs font-semibold"
+            className="nav-icon-btn nav-icon-btn-sm"
             onClick={() => {
               setIsUserPanelOpen(true);
               closeMenu();
               closeCart();
             }}
+            aria-label={user.name}
           >
             <Icon type="user" className="nav-icon nav-icon-sm" />
-            <span className="truncate">{user.name}</span>
           </button>
-        )}
-        {!user && (
-          <button type="button" className="btn-user inline-flex rounded-full px-3 py-2 text-xs font-semibold" onClick={onOpenAuth}>
+        ) : (
+          <button type="button" className="nav-icon-btn nav-icon-btn-sm" onClick={onOpenAuth} aria-label="Iniciar sesión">
             <Icon type="user" className="nav-icon nav-icon-sm" />
-            Entrar
           </button>
         )}
+
         <button
           type="button"
-          className="btn-icon btn-menu-horizontal"
+          className="nav-icon-btn nav-icon-btn-sm"
+          aria-label={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}
+          onClick={onToggleTheme}
+        >
+          <Icon type={theme === 'dark' ? 'sun' : 'moon'} className="nav-icon nav-icon-sm" />
+        </button>
+
+        <button
+          type="button"
+          className="nav-icon-btn nav-icon-btn-sm btn-menu-horizontal"
           aria-label={isOpen ? 'Cerrar menú' : 'Abrir menú'}
           aria-expanded={isOpen}
           onClick={() => {
@@ -289,47 +407,6 @@ function Navbar({
           <span className={`menu-line ${isOpen ? 'open' : ''}`} />
           <span className={`menu-line ${isOpen ? 'open' : ''}`} />
         </button>
-      </div>
-
-      <div
-        className={`fixed inset-0 z-50 navbar-panel fullscreen-menu-panel transition-all duration-300 ${isOpen ? 'opacity-100 scale-100 translate-y-0' : 'pointer-events-none opacity-0 scale-95 -translate-y-2'}`}
-        aria-hidden={!isOpen}
-        onMouseLeave={() => handleDesktopPanelMouseLeave(closeMenu)}
-      >
-        <div className="fullscreen-panel-header">
-          <span className="text-lg font-semibold tracking-[0.24em] text-primary uppercase">Menu</span>
-          <button type="button" className="btn-icon panel-close-button px-4 py-2 text-xs font-semibold" onClick={closeMenu}>Cerrar</button>
-        </div>
-
-        <ul className="fullscreen-menu-list">
-          {menuItems.map((item) => (
-            <li
-              key={item.label}
-              className={`menu-item-group ${activeSubmenu === item.label ? 'is-open' : ''}`}
-              onMouseEnter={() => setActiveSubmenu(item.label)}
-              onMouseLeave={() => setActiveSubmenu('')}
-            >
-              <button
-                type="button"
-                className="menu-main-btn"
-                onClick={() => setActiveSubmenu((prev) => (prev === item.label ? '' : item.label))}
-              >
-                <span className="menu-main-label">{item.label}</span>
-                <span className="menu-main-plus">+</span>
-              </button>
-
-              <ul className="submenu-list">
-                {item.subOptions.map((sub) => (
-                  <li key={sub.label}>
-                    <a href={sub.href} className="submenu-link" onClick={closeMenu}>
-                      {sub.label}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </li>
-          ))}
-        </ul>
       </div>
 
       <div
@@ -430,7 +507,7 @@ function Navbar({
             </div>
 
             <div className="user-panel-actions">
-              {isAdmin && (
+              {isAdmin && !isAdminPage && (
                 <button
                   type="button"
                   className="panel-action-link panel-action-button"
@@ -443,12 +520,25 @@ function Navbar({
                   Dashboard admin
                 </button>
               )}
-              <a href="#productos" className="panel-action-link" onClick={closeUserPanel}><Icon type="bag" /> Mis compras</a>
-              <a href="#productos" className="panel-action-link" onClick={closeUserPanel}><Icon type="heart" /> Lista de deseos</a>
-              <button type="button" className="panel-action-link panel-action-button" onClick={onToggleTheme}>
-                <Icon type="sun" />
-                Cambiar a {theme === 'dark' ? 'modo claro' : 'modo oscuro'}
-              </button>
+              {isAdmin && isAdminPage && (
+                <button
+                  type="button"
+                  className="panel-action-link panel-action-button"
+                  onClick={() => {
+                    closeUserPanel();
+                    navigate('/');
+                  }}
+                >
+                  <Icon type="bag" />
+                  Volver a tienda
+                </button>
+              )}
+              {!isAdmin && (
+                <>
+                  <a href="#productos" className="panel-action-link" onClick={closeUserPanel}><Icon type="bag" /> Mis compras</a>
+                  <a href="#productos" className="panel-action-link" onClick={closeUserPanel}><Icon type="heart" /> Lista de deseos</a>
+                </>
+              )}
               <button
                 type="button"
                 className="panel-action-link panel-action-button panel-action-danger"

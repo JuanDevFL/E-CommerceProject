@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { loginUsuario, registerUsuario } from '../api.js';
+import { forgotPassword, loginUsuario, registerUsuario } from '../api.js';
 
 const initialState = {
   nombre: '',
@@ -13,6 +13,7 @@ function AuthPage({ onAuthSuccess }) {
   const [mode, setMode] = useState('login');
   const [formState, setFormState] = useState(initialState);
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleChange = (event) => {
@@ -26,6 +27,7 @@ function AuthPage({ onAuthSuccess }) {
   const switchMode = (nextMode) => {
     setMode(nextMode);
     setError('');
+    setSuccessMessage('');
     setFormState(initialState);
   };
 
@@ -33,8 +35,15 @@ function AuthPage({ onAuthSuccess }) {
     event.preventDefault();
     setIsSubmitting(true);
     setError('');
+    setSuccessMessage('');
 
     try {
+      if (mode === 'forgot') {
+        const result = await forgotPassword({ email: formState.email });
+        setSuccessMessage(result.message);
+        return;
+      }
+
       const payload = mode === 'register'
         ? await registerUsuario(formState)
         : await loginUsuario({
@@ -94,11 +103,19 @@ function AuthPage({ onAuthSuccess }) {
 
           <form className="auth-form" onSubmit={handleSubmit}>
             <div className="auth-form-header">
-              <h2>{mode === 'login' ? 'Bienvenida de vuelta' : 'Crear cuenta Azami'}</h2>
+              <h2>
+                {mode === 'forgot'
+                  ? 'Recuperar contraseña'
+                  : mode === 'login'
+                    ? 'Bienvenida de vuelta'
+                    : 'Crear cuenta Azami'}
+              </h2>
               <p>
-                {mode === 'login'
-                  ? 'Accede con tu correo y contraseña para continuar con tu selección.'
-                  : 'Registra tu cuenta para guardar piezas y usar el carrito entre sesiones.'}
+                {mode === 'forgot'
+                  ? 'Ingresa tu correo y te enviaremos instrucciones para restablecer tu contraseña.'
+                  : mode === 'login'
+                    ? 'Accede con tu correo y contraseña para continuar con tu selección.'
+                    : 'Registra tu cuenta para guardar piezas y usar el carrito entre sesiones.'}
               </p>
             </div>
 
@@ -128,24 +145,45 @@ function AuthPage({ onAuthSuccess }) {
               />
             </label>
 
-            <label className="auth-field">
-              <span>Contraseña</span>
-              <input
-                type="password"
-                name="password"
-                value={formState.password}
-                onChange={handleChange}
-                placeholder="••••••••"
-                minLength={6}
-                required
-              />
-            </label>
+            {mode !== 'forgot' && (
+              <label className="auth-field">
+                <span>Contraseña</span>
+                <input
+                  type="password"
+                  name="password"
+                  value={formState.password}
+                  onChange={handleChange}
+                  placeholder="••••••••"
+                  minLength={6}
+                  required
+                />
+              </label>
+            )}
+
+            {mode === 'login' && (
+              <button type="button" className="auth-forgot-link" onClick={() => switchMode('forgot')}>
+                ¿Olvidaste tu contraseña?
+              </button>
+            )}
 
             {error && <p className="auth-error">{error}</p>}
+            {successMessage && <p className="auth-success">{successMessage}</p>}
 
             <button type="submit" className="btn-primary auth-submit-button" disabled={isSubmitting}>
-              {isSubmitting ? 'Procesando...' : mode === 'login' ? 'Entrar' : 'Crear cuenta'}
+              {isSubmitting
+                ? 'Procesando...'
+                : mode === 'forgot'
+                  ? 'Enviar instrucciones'
+                  : mode === 'login'
+                    ? 'Entrar'
+                    : 'Crear cuenta'}
             </button>
+
+            {mode === 'forgot' && (
+              <button type="button" className="auth-back-link" onClick={() => switchMode('login')}>
+                Volver al inicio de sesión
+              </button>
+            )}
           </form>
         </div>
       </section>

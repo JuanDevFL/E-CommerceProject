@@ -33,6 +33,20 @@ export async function ensureUsuariosTable() {
   );
 }
 
+export async function ensurePasswordResetTokensTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS password_reset_tokens (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      usuario_id INT NOT NULL,
+      token_hash VARCHAR(255) NOT NULL,
+      expira_at TIMESTAMP NOT NULL,
+      usado BOOLEAN DEFAULT FALSE,
+      creado_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
+    )
+  `);
+}
+
 export function normalizeUserRole(role) {
   return validRoles.has(role) ? role : 'user';
 }

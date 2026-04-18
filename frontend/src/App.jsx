@@ -1,17 +1,36 @@
-import { useEffect, useLayoutEffect, useState } from 'react';
-import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
+import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { fetchProductos } from './api';
-import logoNavBar from './assets/LogoNavBar.svg';
 import Navbar from './components/Navbar.jsx';
 import SiteFooter from './components/SiteFooter.jsx';
 import { curatedProducts, normalizeRemoteProducts } from './data/curatedProducts.js';
+import AboutPage from './pages/AboutPage.jsx';
 import AdminDashboardPage from './pages/AdminDashboardPage.jsx';
 import AuthPage from './pages/AuthPage.jsx';
+import CatalogPage from './pages/CatalogPage.jsx';
 import HomePage from './pages/HomePage.jsx';
+import ProductDetailPage from './pages/ProductDetailPage.jsx';
+import ResetPasswordPage from './pages/ResetPasswordPage.jsx';
+import WishlistPage from './pages/WishlistPage.jsx';
 
 const THEME_STORAGE_KEY = 'azami-theme';
 const USER_STORAGE_KEY = 'azami-user';
-const CART_STORAGE_KEY = 'azami-cart';
+const WISHLIST_STORAGE_KEY = 'azami-wishlist';
+
+function cartKeyForUser(user) {
+  return user?.id ? `azami-cart-${user.id}` : null;
+}
+
+function loadPersistedArray(key) {
+  if (!key) return [];
+  try {
+    const stored = localStorage.getItem(key);
+    const parsed = stored ? JSON.parse(stored) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
 
 function getInitialTheme() {
   const stored = localStorage.getItem(THEME_STORAGE_KEY);
@@ -45,17 +64,7 @@ function getInitialUser() {
 }
 
 function getInitialCart() {
-  const stored = localStorage.getItem(CART_STORAGE_KEY);
-  if (!stored) {
-    return [];
-  }
-
-  try {
-    const parsed = JSON.parse(stored);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
+  return [];
 }
 
 function AdminRoute({ user, children }) {
@@ -78,10 +87,16 @@ function App() {
   const [catalogLoading, setCatalogLoading] = useState(true);
   const [theme, setTheme] = useState(getInitialTheme);
   const [user, setUser] = useState(getInitialUser);
-  const [cartItems, setCartItems] = useState(getInitialCart);
+  const [cartItems, setCartItems] = useState(() => {
+    const initial = getInitialUser();
+    return loadPersistedArray(cartKeyForUser(initial));
+  });
+  const [wishlistIds, setWishlistIds] = useState(() => {
+    return loadPersistedArray(WISHLIST_STORAGE_KEY);
+  });
   const [cartNotice, setCartNotice] = useState(null);
 
-  const isAuthPage = location.pathname === '/auth';
+  const isAuthPage = location.pathname === '/auth' || location.pathname.startsWith('/reset-password');
   const isAdminPage = location.pathname.startsWith('/admin');
 
   useEffect(() => {
@@ -129,8 +144,15 @@ function App() {
   }, [theme]);
 
   useEffect(() => {
-    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cartItems));
-  }, [cartItems]);
+    const key = cartKeyForUser(user);
+    if (key) {
+      localStorage.setItem(key, JSON.stringify(cartItems));
+    }
+  }, [cartItems, user]);
+
+  useEffect(() => {
+    localStorage.setItem(WISHLIST_STORAGE_KEY, JSON.stringify(wishlistIds));
+  }, [wishlistIds]);
 
   useEffect(() => {
     if (!cartNotice) {
@@ -150,6 +172,7 @@ function App() {
 
   const handleLogout = () => {
     setUser(null);
+    setCartItems([]);
     localStorage.removeItem(USER_STORAGE_KEY);
     navigate('/');
   };
@@ -166,6 +189,7 @@ function App() {
 
     setUser(normalizedUser);
     localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(normalizedUser));
+    setCartItems(loadPersistedArray(cartKeyForUser(normalizedUser)));
   };
 
   const handleOpenAuth = () => {
@@ -186,6 +210,10 @@ function App() {
   };
 
   const handleAddToCart = (product) => {
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
     if (product.stock === 0) {
       return;
     }
@@ -247,6 +275,18 @@ function App() {
     setCartItems((currentItems) => currentItems.filter((item) => item.id !== productId));
   };
 
+  const handleToggleWishlist = useCallback((productId) => {
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
+    setWishlistIds((current) =>
+      current.includes(productId)
+        ? current.filter((id) => id !== productId)
+        : [...current, productId]
+    );
+  }, [user, navigate]);
+
   const catalogProducts = remoteProducts.length > 0 ? remoteProducts : curatedProducts;
   const cartCount = cartItems.reduce((total, item) => total + item.quantity, 0);
   const cartSubtotal = cartItems.reduce((total, item) => total + (item.precio * item.quantity), 0);
@@ -254,34 +294,21 @@ function App() {
   return (
     <div className="site-shell bg-background text-text">
       <header className="site-header">
-        {isAuthPage ? (
-          <div className="site-header-inner auth-header-shell">
-            <Link to="/" className="auth-header-brand">
-              <img src={logoNavBar} alt="Logo Azami" className="brand-logo" />
-              <span className="text-xl font-semibold uppercase tracking-[0.28em] text-primary sm:text-2xl">AZAMI</span>
-            </Link>
-
-            <Link to="/" className="btn-secondary rounded-full px-5 py-3 text-sm font-semibold">
-              Volver al inicio
-            </Link>
-          </div>
-        ) : (
-          <div className="site-header-inner">
-            <Navbar
-              user={user}
-              theme={theme}
-              cartItems={cartItems}
-              cartCount={cartCount}
-              cartSubtotal={cartSubtotal}
-              onToggleTheme={toggleTheme}
-              onLogout={handleLogout}
-              onOpenAuth={handleOpenAuth}
-              onIncrementCartItem={handleIncrementCartItem}
-              onDecrementCartItem={handleDecrementCartItem}
-              onRemoveCartItem={handleRemoveCartItem}
-            />
-          </div>
-        )}
+        <div className="site-header-inner">
+          <Navbar
+            user={user}
+            theme={theme}
+            cartItems={cartItems}
+            cartCount={cartCount}
+            cartSubtotal={cartSubtotal}
+            onToggleTheme={toggleTheme}
+            onLogout={handleLogout}
+            onOpenAuth={handleOpenAuth}
+            onIncrementCartItem={handleIncrementCartItem}
+            onDecrementCartItem={handleDecrementCartItem}
+            onRemoveCartItem={handleRemoveCartItem}
+          />
+        </div>
       </header>
 
       {cartNotice && !isAuthPage && !isAdminPage && (
@@ -294,12 +321,41 @@ function App() {
       <Routes>
         <Route
           path="/"
+          element={<HomePage />}
+        />
+        <Route
+          path="/catalogo"
           element={
-            <HomePage
+            <CatalogPage
               catalogProducts={catalogProducts}
               catalogNotice={catalogNotice}
               catalogLoading={catalogLoading}
+              wishlistIds={wishlistIds}
               onAddToCart={handleAddToCart}
+              onToggleWishlist={handleToggleWishlist}
+            />
+          }
+        />
+        <Route
+          path="/producto/:productId"
+          element={
+            <ProductDetailPage
+              products={catalogProducts}
+              wishlistIds={wishlistIds}
+              onAddToCart={handleAddToCart}
+              onToggleWishlist={handleToggleWishlist}
+            />
+          }
+        />
+        <Route path="/nosotros" element={<AboutPage />} />
+        <Route
+          path="/wishlist"
+          element={
+            <WishlistPage
+              products={catalogProducts}
+              wishlistIds={wishlistIds}
+              onAddToCart={handleAddToCart}
+              onToggleWishlist={handleToggleWishlist}
             />
           }
         />
@@ -307,6 +363,7 @@ function App() {
           path="/auth"
           element={user ? <Navigate to={user.role === 'admin' && user.token ? '/admin' : '/'} replace /> : <AuthPage onAuthSuccess={handleAuthSuccess} />}
         />
+        <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
         <Route
           path="/admin"
           element={

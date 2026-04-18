@@ -85,3 +85,17 @@ export async function updateUsuarioRol(userId, rol) {
     body: JSON.stringify({ rol }),
   });
 }
+
+export async function forgotPassword(payload) {
+  return request('/usuarios/forgot-password', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function resetPassword(payload) {
+  return request('/usuarios/reset-password', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}

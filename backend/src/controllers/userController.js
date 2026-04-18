@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { signAuthToken } from '../auth.js';
 import { findMockAuthUser, isMockLoginMode } from '../data/mockAuthUsers.js';
@@ -106,6 +107,82 @@ export async function loginUsuario(req, res, next) {
       token,
       authSource: 'database',
     });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function forgotPassword(req, res, next) {
+  try {
+    const email = req.body.email?.trim().toLowerCase();
+
+    if (!email) {
+      return res.status(400).json({ error: 'El correo es obligatorio' });
+    }
+
+    const successMessage = 'Si el correo está registrado, recibirás instrucciones para restablecer tu contraseña.';
+
+    const [rows] = await pool.query('SELECT id FROM usuarios WHERE email = ?', [email]);
+    if (rows.length === 0) {
+      return res.json({ message: successMessage });
+    }
+
+    const user = rows[0];
+
+    // Invalidate any previous unused tokens for this user
+    await pool.query(
+      'UPDATE password_reset_tokens SET usado = TRUE WHERE usuario_id = ? AND usado = FALSE',
+      [user.id]
+    );
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    const expiraAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+    await pool.query(
+      'INSERT INTO password_reset_tokens (usuario_id, token_hash, expira_at) VALUES (?, ?, ?)',
+      [user.id, tokenHash, expiraAt]
+    );
+
+    const resetUrl = `http://localhost:5173/reset-password/${token}`;
+    console.log(`\n🔑 Enlace de restablecimiento para ${email}:\n   ${resetUrl}\n`);
+
+    res.json({ message: successMessage });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function resetPassword(req, res, next) {
+  try {
+    const { token, password } = req.body;
+
+    if (!token || !password) {
+      return res.status(400).json({ error: 'Token y nueva contraseña son obligatorios' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
+    }
+
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+
+    const [rows] = await pool.query(
+      'SELECT id, usuario_id FROM password_reset_tokens WHERE token_hash = ? AND usado = FALSE AND expira_at > NOW()',
+      [tokenHash]
+    );
+
+    if (rows.length === 0) {
+      return res.status(400).json({ error: 'El enlace es inválido o ha expirado' });
+    }
+
+    const resetRecord = rows[0];
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    await pool.query('UPDATE usuarios SET password = ? WHERE id = ?', [passwordHash, resetRecord.usuario_id]);
+    await pool.query('UPDATE password_reset_tokens SET usado = TRUE WHERE id = ?', [resetRecord.id]);
+
+    res.json({ message: 'Contraseña actualizada correctamente. Ya puedes iniciar sesión.' });
   } catch (error) {
     next(error);
   }

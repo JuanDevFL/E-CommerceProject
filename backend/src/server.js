@@ -6,7 +6,7 @@ import { requestLogger } from './middleware/requestLogger.js';
 import adminRoutes from './routes/adminRoutes.js';
 import productRoutes from './routes/productRoutes.js';
 import userRoutes from './routes/userRoutes.js';
-import { ensureUsuariosTable } from './userSchema.js';
+import { ensurePasswordResetTokensTable, ensureUsuariosTable } from './userSchema.js';
 
 dotenv.config();
 
@@ -49,6 +49,7 @@ async function bootstrap() {
   try {
     if (!isMockLoginMode()) {
       await ensureUsuariosTable();
+      await ensurePasswordResetTokensTable();
     }
 
     app.listen(PORT, () => {
