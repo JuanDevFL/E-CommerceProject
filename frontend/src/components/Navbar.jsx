@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import logoNavBar from '../assets/LogoNavBar.svg';
 
 function formatPrice(value) {
@@ -114,6 +114,7 @@ function Navbar({
   onToggleTheme,
   onLogout,
   onOpenAuth,
+  onOpenCheckout,
   onIncrementCartItem,
   onDecrementCartItem,
   onRemoveCartItem,
@@ -170,10 +171,10 @@ function Navbar({
 
   return (
     <nav className="navbar relative flex w-full items-center py-3">
-      <div className="navbar-brand min-w-0 flex items-center gap-2 sm:gap-3">
+      <Link to="/" className="navbar-brand min-w-0 flex items-center gap-2 sm:gap-3" aria-label="Ir a la página principal">
         <img src={logoNavBar} alt="Logo Azami" className="brand-logo" />
         <span className="text-xl font-semibold uppercase tracking-[0.28em] text-primary sm:text-2xl">AZAMI</span>
-      </div>
+      </Link>
 
       <div className="navbar-center-actions hidden lg:flex items-center gap-2">
         <div className="navbar-menu-anchor">
@@ -410,6 +411,54 @@ function Navbar({
       </div>
 
       <div
+        className={`fixed inset-0 z-[63] navbar-panel fullscreen-menu-panel transition-all duration-300 lg:hidden ${isOpen ? 'opacity-100 scale-100 translate-y-0' : 'pointer-events-none opacity-0 scale-95 -translate-y-2'}`}
+        aria-hidden={!isOpen}
+      >
+        <div className="fullscreen-panel-header">
+          <span className="text-lg font-semibold tracking-[0.24em] text-primary uppercase">Menu</span>
+          <button type="button" className="btn-icon panel-close-button px-4 py-2 text-xs font-semibold" onClick={closeMenu}>Cerrar</button>
+        </div>
+
+        <ul className="fullscreen-menu-list">
+          {menuItems.map((item) => (
+            <li
+              key={item.label}
+              className={`menu-item-group ${activeSubmenu === item.label ? 'is-open' : ''}`}
+            >
+              <button
+                type="button"
+                className="menu-main-btn"
+                onClick={() => setActiveSubmenu((prev) => (prev === item.label ? '' : item.label))}
+              >
+                <span className="menu-main-label">{item.label}</span>
+                <span className="menu-main-plus">+</span>
+              </button>
+
+              <ul className="submenu-list">
+                {item.subOptions.map((sub) => (
+                  <li key={sub.label}>
+                    {sub.route ? (
+                      <button
+                        type="button"
+                        className="submenu-link"
+                        onClick={() => { closeMenu(); navigate(sub.route); }}
+                      >
+                        {sub.label}
+                      </button>
+                    ) : (
+                      <a href={sub.href} className="submenu-link" onClick={closeMenu}>
+                        {sub.label}
+                      </a>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div
         className={`fixed inset-0 z-[62] cart-panel transition-all duration-300 ${isCartOpen ? 'opacity-100 translate-y-0' : 'pointer-events-none opacity-0 translate-y-2'}`}
         aria-hidden={!isCartOpen}
         onMouseLeave={() => handleDesktopPanelMouseLeave(closeCart)}
@@ -471,7 +520,10 @@ function Navbar({
                   closeCart();
                   if (!user) {
                     onOpenAuth();
+                    return;
                   }
+
+                  onOpenCheckout?.();
                 }}
               >
                 {user ? 'Continuar compra' : 'Inicia sesión para continuar'}
@@ -535,8 +587,8 @@ function Navbar({
               )}
               {!isAdmin && (
                 <>
-                  <a href="#productos" className="panel-action-link" onClick={closeUserPanel}><Icon type="bag" /> Mis compras</a>
-                  <a href="#productos" className="panel-action-link" onClick={closeUserPanel}><Icon type="heart" /> Lista de deseos</a>
+                  <button type="button" className="panel-action-link panel-action-button" onClick={() => { closeUserPanel(); navigate('/mi-cuenta'); }}><Icon type="bag" /> Mi portal</button>
+                  <button type="button" className="panel-action-link panel-action-button" onClick={() => { closeUserPanel(); navigate('/mi-cuenta'); }}><Icon type="heart" /> Lista de deseos</button>
                 </>
               )}
               <button
@@ -574,7 +626,8 @@ function Navbar({
         )}
       </div>
 
-      {isOpen && <div className="screen-overlay fixed inset-0 z-40 lg:hidden" onClick={closeMenu} aria-hidden="true" />}
+      {isOpen && <div className="screen-overlay fixed inset-0 z-[62] lg:hidden" onClick={closeMenu} aria-hidden="true" />}
+      {isUserPanelOpen && <div className="screen-overlay fixed inset-0 z-[59] lg:hidden" onClick={closeUserPanel} aria-hidden="true" />}
       {isCartOpen && <div className="screen-overlay fixed inset-0 z-[61] lg:hidden" onClick={closeCart} aria-hidden="true" />}
       {(isUserPanelOpen || isCartOpen) && <div className="fixed inset-0 z-50 hidden lg:block" onClick={() => { closeUserPanel(); closeCart(); }} aria-hidden="true" />}
     </nav>

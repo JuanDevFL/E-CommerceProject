@@ -1,11 +1,14 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { forgotPassword, loginUsuario, registerUsuario } from '../api.js';
 
 const initialState = {
   nombre: '',
   email: '',
   password: '',
+  acceptTerms: false,
+  acceptDataPolicy: false,
+  acceptMarketing: false,
 };
 
 function AuthPage({ onAuthSuccess }) {
@@ -17,10 +20,10 @@ function AuthPage({ onAuthSuccess }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleChange = (event) => {
-    const { name, value } = event.target;
+    const { name, value, type, checked } = event.target;
     setFormState((current) => ({
       ...current,
-      [name]: value,
+      [name]: type === 'checkbox' ? checked : value,
     }));
   };
 
@@ -45,7 +48,21 @@ function AuthPage({ onAuthSuccess }) {
       }
 
       const payload = mode === 'register'
-        ? await registerUsuario(formState)
+        ? (() => {
+            if (!formState.acceptTerms || !formState.acceptDataPolicy) {
+              throw new Error('Debes aceptar Términos y autorizar el tratamiento de datos para crear tu cuenta.');
+            }
+
+            return registerUsuario({
+              nombre: formState.nombre,
+              email: formState.email,
+              password: formState.password,
+              acceptTerms: formState.acceptTerms,
+              acceptDataPolicy: formState.acceptDataPolicy,
+              acceptMarketing: formState.acceptMarketing,
+              consentVersion: '2026-05-07',
+            });
+          })()
         : await loginUsuario({
             email: formState.email,
             password: formState.password,
@@ -164,6 +181,46 @@ function AuthPage({ onAuthSuccess }) {
               <button type="button" className="auth-forgot-link" onClick={() => switchMode('forgot')}>
                 ¿Olvidaste tu contraseña?
               </button>
+            )}
+
+            {mode === 'register' && (
+              <div className="auth-consent-block" aria-label="Autorizaciones legales">
+                <label className="auth-consent-item">
+                  <input
+                    type="checkbox"
+                    name="acceptTerms"
+                    checked={formState.acceptTerms}
+                    onChange={handleChange}
+                  />
+                  <span>
+                    Acepto los <Link to="/terminos" target="_blank" rel="noreferrer">Términos y Condiciones</Link>.
+                  </span>
+                </label>
+
+                <label className="auth-consent-item">
+                  <input
+                    type="checkbox"
+                    name="acceptDataPolicy"
+                    checked={formState.acceptDataPolicy}
+                    onChange={handleChange}
+                  />
+                  <span>
+                    Autorizo el tratamiento de datos personales conforme a la <Link to="/privacidad" target="_blank" rel="noreferrer">Política de Privacidad</Link> y Ley 1581 de 2012.
+                  </span>
+                </label>
+
+                <label className="auth-consent-item">
+                  <input
+                    type="checkbox"
+                    name="acceptMarketing"
+                    checked={formState.acceptMarketing}
+                    onChange={handleChange}
+                  />
+                  <span>
+                    Deseo recibir comunicaciones comerciales (opcional).
+                  </span>
+                </label>
+              </div>
             )}
 
             {error && <p className="auth-error">{error}</p>}

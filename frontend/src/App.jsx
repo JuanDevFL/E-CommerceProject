@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
-import { fetchProductos } from './api';
+import { fetchProductos, logoutApi } from './api';
+import ConsentBanner from './components/ConsentBanner.jsx';
 import Navbar from './components/Navbar.jsx';
 import SiteFooter from './components/SiteFooter.jsx';
 import { curatedProducts, normalizeRemoteProducts } from './data/curatedProducts.js';
@@ -8,14 +9,21 @@ import AboutPage from './pages/AboutPage.jsx';
 import AdminDashboardPage from './pages/AdminDashboardPage.jsx';
 import AuthPage from './pages/AuthPage.jsx';
 import CatalogPage from './pages/CatalogPage.jsx';
+import CookiesPage from './pages/CookiesPage.jsx';
 import HomePage from './pages/HomePage.jsx';
+import PrivacyPage from './pages/PrivacyPage.jsx';
 import ProductDetailPage from './pages/ProductDetailPage.jsx';
+import CheckoutPage from './pages/CheckoutPage.jsx';
 import ResetPasswordPage from './pages/ResetPasswordPage.jsx';
+import TermsPage from './pages/TermsPage.jsx';
 import WishlistPage from './pages/WishlistPage.jsx';
+import UserAccountPage from './pages/UserAccountPage.jsx';
 import logoNavBar from './assets/LogoNavBar.svg';
 
 const THEME_STORAGE_KEY = 'azami-theme';
 const USER_STORAGE_KEY = 'azami-user';
+const CONSENT_STORAGE_KEY = 'azami-consent';
+const CONSENT_VERSION = '2026-05-07';
 
 function cartKeyForUser(user) {
   return user?.id ? `azami-cart-${user.id}` : null;
@@ -45,6 +53,15 @@ function getInitialTheme() {
   return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
 }
 
+function isTokenExpired(token) {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+    return typeof payload.exp === 'number' ? Date.now() / 1000 > payload.exp : false;
+  } catch {
+    return true;
+  }
+}
+
 function getInitialUser() {
   const stored = localStorage.getItem(USER_STORAGE_KEY);
   if (!stored) {
@@ -54,14 +71,19 @@ function getInitialUser() {
   try {
     const parsed = JSON.parse(stored);
     if (parsed?.name && parsed?.email) {
+      const token = parsed.token || '';
+      if (token && isTokenExpired(token)) {
+        localStorage.removeItem(USER_STORAGE_KEY);
+        return null;
+      }
       return {
         ...parsed,
         role: parsed.role || 'user',
-        token: parsed.token || '',
+        token,
       };
     }
   } catch {
-    // If parsing fails, fallback to a default user.
+    // parsing failed
   }
 
   return null;
@@ -69,6 +91,15 @@ function getInitialUser() {
 
 function getInitialCart() {
   return [];
+}
+
+function getStoredConsent() {
+  try {
+    const stored = localStorage.getItem(CONSENT_STORAGE_KEY);
+    return stored ? JSON.parse(stored) : null;
+  } catch {
+    return null;
+  }
 }
 
 function AdminRoute({ user, children }) {
@@ -80,6 +111,13 @@ function AdminRoute({ user, children }) {
     return <Navigate to="/" replace />;
   }
 
+  return children;
+}
+
+function ProtectedRoute({ user, children }) {
+  if (!user || !user.token) {
+    return <Navigate to="/auth" replace />;
+  }
   return children;
 }
 
@@ -100,6 +138,10 @@ function App() {
     return loadPersistedArray(wishlistKeyForUser(initial));
   });
   const [cartNotice, setCartNotice] = useState(null);
+  const [showConsentBanner, setShowConsentBanner] = useState(() => {
+    const storedConsent = getStoredConsent();
+    return !storedConsent || storedConsent.version !== CONSENT_VERSION;
+  });
   const [pageTransition, setPageTransition] = useState(false);
   const prevPathRef = useRef(location.pathname);
 
@@ -190,13 +232,46 @@ function App() {
     setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
   };
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
+    // Notifica al backend para revocar el refresh token (cookie httpOnly)
+    logoutApi().catch(() => {});
+    // Limpia el carrito del usuario del localStorage al cerrar sesión
+    const cartKey = cartKeyForUser(user);
+    if (cartKey) localStorage.removeItem(cartKey);
     setUser(null);
     setCartItems([]);
     setWishlistIds([]);
     localStorage.removeItem(USER_STORAGE_KEY);
     navigate('/');
-  };
+  }, [navigate, user]);
+
+  // Auto-logout cuando el backend devuelve 401 y el refresh también falló
+  useEffect(() => {
+    function onSessionExpired() {
+      handleLogout();
+    }
+    window.addEventListener('azami-session-expired', onSessionExpired);
+    return () => window.removeEventListener('azami-session-expired', onSessionExpired);
+  }, [handleLogout]);
+
+  // Cuando el access token se renueva silenciosamente, actualiza el estado del usuario
+  useEffect(() => {
+    function onTokenRefreshed(e) {
+      const refreshed = e.detail;
+      setUser((prev) => {
+        if (!prev) return prev;
+        const updated = {
+          ...prev,
+          token: refreshed.token,
+          role: refreshed.rol || prev.role,
+        };
+        localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(updated));
+        return updated;
+      });
+    }
+    window.addEventListener('azami-token-refreshed', onTokenRefreshed);
+    return () => window.removeEventListener('azami-token-refreshed', onTokenRefreshed);
+  }, []);
 
   const handleAuthSuccess = (nextUser) => {
     const normalizedUser = {
@@ -210,12 +285,51 @@ function App() {
 
     setUser(normalizedUser);
     localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(normalizedUser));
-    setCartItems(loadPersistedArray(cartKeyForUser(normalizedUser)));
-    setWishlistIds(loadPersistedArray(wishlistKeyForUser(normalizedUser)));
+    // No cargar carrito anterior al iniciar sesión — empieza limpio
+    setCartItems([]);
+    setWishlistIds([]);
   };
 
   const handleOpenAuth = () => {
     navigate('/auth');
+  };
+
+  const handleOpenCheckout = () => {
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
+
+    navigate('/checkout');
+  };
+
+  const handleUserUpdated = ({ name, email }) => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      const updated = { ...prev, name, email };
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const handleSaveConsent = (preferences, source = 'custom') => {
+    const record = {
+      version: CONSENT_VERSION,
+      source,
+      savedAt: new Date().toISOString(),
+      preferences: {
+        necessary: true,
+        analytics: Boolean(preferences.analytics),
+        marketing: Boolean(preferences.marketing),
+      },
+    };
+
+    localStorage.setItem(CONSENT_STORAGE_KEY, JSON.stringify(record));
+    setShowConsentBanner(false);
+  };
+
+  const handleOpenConsentPreferences = () => {
+    setShowConsentBanner(true);
   };
 
   const handleAdminProductCreated = (product) => {
@@ -321,24 +435,25 @@ function App() {
       </div>
 
       <header className="site-header">
-        <div className="site-header-inner">
-          <Navbar
-            user={user}
-            theme={theme}
-            cartItems={cartItems}
-            cartCount={cartCount}
-            cartSubtotal={cartSubtotal}
-            onToggleTheme={toggleTheme}
-            onLogout={handleLogout}
-            onOpenAuth={handleOpenAuth}
-            onIncrementCartItem={handleIncrementCartItem}
-            onDecrementCartItem={handleDecrementCartItem}
-            onRemoveCartItem={handleRemoveCartItem}
-          />
-        </div>
-      </header>
+          <div className="site-header-inner">
+            <Navbar
+              user={user}
+              theme={theme}
+              cartItems={cartItems}
+              cartCount={cartCount}
+              cartSubtotal={cartSubtotal}
+              onToggleTheme={toggleTheme}
+              onLogout={handleLogout}
+              onOpenAuth={handleOpenAuth}
+              onOpenCheckout={handleOpenCheckout}
+              onIncrementCartItem={handleIncrementCartItem}
+              onDecrementCartItem={handleDecrementCartItem}
+              onRemoveCartItem={handleRemoveCartItem}
+            />
+          </div>
+        </header>
 
-      {cartNotice && !isAuthPage && !isAdminPage && (
+      {cartNotice && !isAdminPage && (
         <div key={cartNotice.id} className="cart-toast" aria-live="polite" aria-atomic="true">
           <p className="cart-toast-title">Carrito actualizado</p>
           <p className="cart-toast-text">{cartNotice.text}</p>
@@ -348,7 +463,7 @@ function App() {
       <Routes>
         <Route
           path="/"
-          element={<HomePage />}
+          element={<HomePage catalogProducts={catalogProducts} />}
         />
         <Route
           path="/catalogo"
@@ -375,6 +490,9 @@ function App() {
           }
         />
         <Route path="/nosotros" element={<AboutPage />} />
+        <Route path="/terminos" element={<TermsPage />} />
+        <Route path="/privacidad" element={<PrivacyPage />} />
+        <Route path="/cookies" element={<CookiesPage />} />
         <Route
           path="/wishlist"
           element={
@@ -387,8 +505,39 @@ function App() {
           }
         />
         <Route
+          path="/checkout"
+          element={
+            <ProtectedRoute user={user}>
+              <CheckoutPage
+                user={user}
+                cartItems={cartItems}
+                onBackToCatalog={() => navigate('/catalogo')}
+              />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/auth"
-          element={user ? <Navigate to={user.role === 'admin' && user.token ? '/admin' : '/'} replace /> : <AuthPage onAuthSuccess={handleAuthSuccess} />}
+          element={user ? <Navigate to={user.role === 'admin' && user.token ? '/admin' : '/mi-cuenta'} replace /> : <AuthPage onAuthSuccess={handleAuthSuccess} />}
+        />
+        <Route
+          path="/mi-cuenta"
+          element={
+            <ProtectedRoute user={user}>
+              <UserAccountPage
+                user={user}
+                catalogProducts={catalogProducts}
+                wishlistIds={wishlistIds}
+                cartItems={cartItems}
+                onAddToCart={handleAddToCart}
+                onToggleWishlist={handleToggleWishlist}
+                onIncrementCartItem={handleIncrementCartItem}
+                onDecrementCartItem={handleDecrementCartItem}
+                onRemoveCartItem={handleRemoveCartItem}
+                onUserUpdated={handleUserUpdated}
+              />
+            </ProtectedRoute>
+          }
         />
         <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
         <Route
@@ -401,7 +550,11 @@ function App() {
         />
       </Routes>
 
-      {!isAuthPage && !isAdminPage && <SiteFooter />}
+      {!isAdminPage && <SiteFooter onOpenConsentPreferences={handleOpenConsentPreferences} />}
+
+      {showConsentBanner && !isAdminPage && (
+        <ConsentBanner onSave={handleSaveConsent} />
+      )}
 
       {!isAdminPage && (
         <a

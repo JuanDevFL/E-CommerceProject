@@ -47,11 +47,11 @@ export async function getAdminDashboard(req, res, next) {
           o.total,
           o.estado,
           o.creado_at,
-          COALESCE(u.nombre, 'Cliente sin registro') AS cliente
+          COALESCE(u.nombre, 'Cliente sin registro') AS cliente,
+          u.email AS cliente_email
         FROM ordenes o
         LEFT JOIN usuarios u ON u.id = o.usuario_id
         ORDER BY o.creado_at DESC
-        LIMIT 6
       `),
       pool.query(`
         SELECT
@@ -67,13 +67,11 @@ export async function getAdminDashboard(req, res, next) {
         SELECT id, nombre, email, rol, creado_at
         FROM usuarios
         ORDER BY creado_at DESC
-        LIMIT 12
       `),
       pool.query(`
         SELECT id, nombre, precio, stock, categoria, tono, etiqueta, creado_at
         FROM productos
         ORDER BY creado_at DESC
-        LIMIT 12
       `),
     ]);
 
@@ -183,6 +181,43 @@ export async function updateUsuarioRol(req, res, next) {
       rol: requestedRole,
       creado_at: targetUser.creado_at,
     });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getOrderDetail(req, res, next) {
+  try {
+    const orderId = Number(req.params.orderId);
+
+    if (!Number.isInteger(orderId) || orderId <= 0) {
+      return res.status(400).json({ error: 'El identificador de la orden no es válido' });
+    }
+
+    const [orderRows] = await pool.query(
+      `SELECT o.id, o.total, o.estado, o.creado_at,
+              COALESCE(u.nombre, 'Cliente sin registro') AS cliente,
+              u.email AS cliente_email
+       FROM ordenes o
+       LEFT JOIN usuarios u ON u.id = o.usuario_id
+       WHERE o.id = ? LIMIT 1`,
+      [orderId]
+    );
+
+    if (orderRows.length === 0) {
+      return res.status(404).json({ error: 'Orden no encontrada' });
+    }
+
+    const [items] = await pool.query(
+      `SELECT oi.id, oi.cantidad, oi.precio,
+              p.nombre, p.imagen_url, p.categoria
+       FROM orden_items oi
+       LEFT JOIN productos p ON p.id = oi.producto_id
+       WHERE oi.orden_id = ?`,
+      [orderId]
+    );
+
+    res.json({ ...orderRows[0], items });
   } catch (error) {
     next(error);
   }

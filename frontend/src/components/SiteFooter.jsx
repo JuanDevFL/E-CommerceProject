@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom';
+
 function SocialIcon({ type }) {
   const commonProps = {
     className: 'footer-social-icon',
@@ -40,12 +42,13 @@ function SocialIcon({ type }) {
   }
 }
 
-function SiteFooter() {
+function SiteFooter({ onOpenConsentPreferences }) {
   const links = [
-    { label: 'Sobre nosotros', href: '#about' },
-    { label: 'Catálogo', href: '#productos' },
-    { label: 'Contáctanos', href: '#contacto' },
-    { label: 'Privacidad', href: '#contacto' },
+    { label: 'Sobre nosotros', to: '/nosotros' },
+    { label: 'Catálogo', to: '/catalogo' },
+    { label: 'Términos y condiciones', to: '/terminos' },
+    { label: 'Privacidad', to: '/privacidad' },
+    { label: 'Política de cookies', to: '/cookies' },
     { label: 'Ayuda', href: 'mailto:contacto@azami.com' }
   ];
 
@@ -63,10 +66,19 @@ function SiteFooter() {
 
         <nav className="site-footer-links" aria-label="Enlaces del pie de página">
           {links.map((link) => (
-            <a key={link.label} href={link.href} className="site-footer-link">
-              {link.label}
-            </a>
+            link.to ? (
+              <Link key={link.label} to={link.to} className="site-footer-link">
+                {link.label}
+              </Link>
+            ) : (
+              <a key={link.label} href={link.href} className="site-footer-link">
+                {link.label}
+              </a>
+            )
           ))}
+          <button type="button" className="site-footer-link site-footer-button" onClick={onOpenConsentPreferences}>
+            Configurar cookies
+          </button>
         </nav>
 
         <div className="site-footer-social" aria-label="Redes sociales de Azami">

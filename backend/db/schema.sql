@@ -7,6 +7,11 @@ CREATE TABLE IF NOT EXISTS usuarios (
   email VARCHAR(255) NOT NULL UNIQUE,
   password VARCHAR(255) NOT NULL,
   rol ENUM('user', 'admin') NOT NULL DEFAULT 'user',
+  terminos_aceptados BOOLEAN NOT NULL DEFAULT FALSE,
+  datos_autorizados BOOLEAN NOT NULL DEFAULT FALSE,
+  marketing_autorizado BOOLEAN NOT NULL DEFAULT FALSE,
+  consentimiento_version VARCHAR(30) DEFAULT NULL,
+  consentimiento_at TIMESTAMP NULL,
   creado_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

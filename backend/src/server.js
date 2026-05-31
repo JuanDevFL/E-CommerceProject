@@ -1,12 +1,15 @@
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import { isMockLoginMode } from './data/mockAuthUsers.js';
 import { requestLogger } from './middleware/requestLogger.js';
+import accountRoutes from './routes/accountRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import productRoutes from './routes/productRoutes.js';
 import userRoutes from './routes/userRoutes.js';
-import { ensurePasswordResetTokensTable, ensureUsuariosTable } from './userSchema.js';
+import { ensureActividadLogsTable, ensureAddressesTable, ensurePasswordResetTokensTable, ensureRefreshTokensTable, ensureUsuariosTable } from './userSchema.js';
 
 dotenv.config();
 
@@ -19,6 +22,17 @@ const allowedOrigins = new Set([
   'http://127.0.0.1:5173',
 ]);
 
+// En producción añade el dominio del frontend (Vercel u otro) vía variable de entorno.
+// Soporta múltiples dominios separados por coma, por ejemplo:
+//   ALLOWED_ORIGINS=https://azami.vercel.app,https://www.azami.com
+if (process.env.ALLOWED_ORIGINS) {
+  for (const origin of process.env.ALLOWED_ORIGINS.split(',')) {
+    const trimmed = origin.trim();
+    if (trimmed) allowedOrigins.add(trimmed);
+  }
+}
+
+app.use(helmet());
 app.use(cors({
   origin(origin, callback) {
     if (!origin || allowedOrigins.has(origin)) {
@@ -28,7 +42,9 @@ app.use(cors({
 
     callback(new Error('Origin not allowed by CORS'));
   },
+  credentials: true,
 }));
+app.use(cookieParser());
 app.use(express.json());
 app.use(requestLogger);
 
@@ -39,6 +55,7 @@ app.get('/', (req, res) => {
 app.use('/api/productos', productRoutes);
 app.use('/api/usuarios', userRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/cuenta', accountRoutes);
 
 app.use((err, req, res, next) => {
   console.error(err.stack);
@@ -50,6 +67,9 @@ async function bootstrap() {
     if (!isMockLoginMode()) {
       await ensureUsuariosTable();
       await ensurePasswordResetTokensTable();
+      await ensureActividadLogsTable();
+      await ensureRefreshTokensTable();
+      await ensureAddressesTable();
     }
 
     app.listen(PORT, () => {

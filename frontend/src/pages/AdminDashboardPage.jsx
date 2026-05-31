@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { createAdminProducto, fetchAdminDashboard, updateUsuarioRol } from '../api.js';
+import { createAdminProducto, fetchAdminDashboard, fetchOrderDetail, updateAdminProducto, updateUsuarioRol } from '../api.js';
 import './AdminDashboardPage.css';
 
 const initialProductForm = {
@@ -53,6 +53,22 @@ function AdminDashboardPage({ user, onProductCreated }) {
   const [successMessage, setSuccessMessage] = useState('');
   const [isCreatingProduct, setIsCreatingProduct] = useState(false);
   const [updatingUserId, setUpdatingUserId] = useState(null);
+  const [editingProduct, setEditingProduct] = useState(null);
+  const [editForm, setEditForm] = useState(initialProductForm);
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [orderDetail, setOrderDetail] = useState(null);
+  const [loadingOrder, setLoadingOrder] = useState(false);
+
+  const [orderSearch, setOrderSearch] = useState('');
+  const [orderStatusFilter, setOrderStatusFilter] = useState('all');
+  const [orderPage, setOrderPage] = useState(0);
+
+  const [productSearch, setProductSearch] = useState('');
+  const [productCategoryFilter, setProductCategoryFilter] = useState('all');
+  const [productPage, setProductPage] = useState(0);
+
+  const PAGE_SIZE = 10;
 
   const loadDashboard = async ({ showLoader = false } = {}) => {
     if (showLoader || !dashboard) {
@@ -122,6 +138,66 @@ function AdminDashboardPage({ user, onProductCreated }) {
     }
   };
 
+  const handleEditClick = (product) => {
+    setEditingProduct(product);
+    setEditForm({
+      nombre: product.nombre || '',
+      descripcion: product.descripcion || '',
+      precio: String(product.precio || ''),
+      imagen_url: product.imagen_url || '',
+      stock: String(product.stock || '0'),
+      categoria: product.categoria || '',
+      tono: product.tono || '',
+      material: product.material || '',
+      etiqueta: product.etiqueta || '',
+    });
+  };
+
+  const handleEditFieldChange = (event) => {
+    const { name, value } = event.target;
+    setEditForm((current) => ({ ...current, [name]: value }));
+  };
+
+  const handleSaveEdit = async (event) => {
+    event.preventDefault();
+    setIsSavingEdit(true);
+    setActionError('');
+    setSuccessMessage('');
+
+    try {
+      const payload = {
+        ...editForm,
+        precio: Number(editForm.precio),
+        stock: Number(editForm.stock || 0),
+      };
+
+      const updated = await updateAdminProducto(editingProduct.id, payload);
+      setSuccessMessage(`${updated.nombre} se actualizó correctamente.`);
+      setEditingProduct(null);
+      await loadDashboard();
+    } catch (error) {
+      setActionError(error.message || 'No se pudo actualizar el producto.');
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
+  const handleOrderClick = async (orderId) => {
+    setSelectedOrder(orderId);
+    setOrderDetail(null);
+    setLoadingOrder(true);
+
+    try {
+      const detail = await fetchOrderDetail(orderId);
+      setOrderDetail(detail);
+    } catch (error) {
+      setActionError(error.message || 'No se pudo cargar el detalle de la orden.');
+      setSelectedOrder(null);
+    } finally {
+      setLoadingOrder(false);
+    }
+  };
+
   const handleRoleChange = async (account) => {
     const nextRole = roleDrafts[account.id] || account.rol;
 
@@ -164,6 +240,28 @@ function AdminDashboardPage({ user, onProductCreated }) {
   const lowStockRatio = metrics.totalProducts > 0 ? Math.round((metrics.lowStockProducts / metrics.totalProducts) * 100) : 0;
   const adminCoverage = metrics.totalUsers > 0 ? Math.round((metrics.totalAdmins / metrics.totalUsers) * 100) : 0;
   const maxCategoryStock = Math.max(...categoryBreakdown.map((category) => Number(category.stockTotal || 0)), 1);
+
+  const filteredOrders = recentOrders.filter((order) => {
+    const matchesSearch = !orderSearch ||
+      order.cliente?.toLowerCase().includes(orderSearch.toLowerCase()) ||
+      order.cliente_email?.toLowerCase().includes(orderSearch.toLowerCase()) ||
+      String(order.id).includes(orderSearch);
+    const matchesStatus = orderStatusFilter === 'all' || order.estado === orderStatusFilter;
+    return matchesSearch && matchesStatus;
+  });
+  const orderTotalPages = Math.max(1, Math.ceil(filteredOrders.length / PAGE_SIZE));
+  const paginatedOrders = filteredOrders.slice(orderPage * PAGE_SIZE, (orderPage + 1) * PAGE_SIZE);
+
+  const productCategories = [...new Set(products.map((p) => p.categoria).filter(Boolean))];
+  const filteredProducts = products.filter((product) => {
+    const matchesSearch = !productSearch ||
+      product.nombre?.toLowerCase().includes(productSearch.toLowerCase()) ||
+      product.etiqueta?.toLowerCase().includes(productSearch.toLowerCase());
+    const matchesCategory = productCategoryFilter === 'all' || product.categoria === productCategoryFilter;
+    return matchesSearch && matchesCategory;
+  });
+  const productTotalPages = Math.max(1, Math.ceil(filteredProducts.length / PAGE_SIZE));
+  const paginatedProducts = filteredProducts.slice(productPage * PAGE_SIZE, (productPage + 1) * PAGE_SIZE);
 
   return (
     <main className="admin-page">
@@ -304,55 +402,91 @@ function AdminDashboardPage({ user, onProductCreated }) {
                     <p>{formatInteger(metrics.totalAdmins)} administradores gestionan la operación.</p>
                   </div>
                 </div>
-
-                <div className="admin-alert-list">
-                  {alerts.length > 0 ? alerts.map((alert) => (
-                    <div key={alert.id} className="admin-alert-card">
-                      <strong>{alert.title}</strong>
-                      <p>{alert.detail}</p>
-                    </div>
-                  )) : (
-                    <div className="admin-alert-card is-neutral">
-                      <strong>Sin alertas críticas</strong>
-                      <p>El panel no detecta incidentes relevantes en este momento.</p>
-                    </div>
-                  )}
-                </div>
               </article>
             </section>
 
-            <section className="admin-report-grid admin-report-grid-secondary">
-              <article className="admin-panel">
-                <div className="admin-panel-head">
-                  <div>
-                    <p className="admin-panel-kicker">Ventas recientes</p>
-                    <h2>Actividad de órdenes</h2>
-                  </div>
+            <section className="admin-panel admin-orders-panel">
+              <div className="admin-panel-head">
+                <div>
+                  <p className="admin-panel-kicker">Todas las órdenes</p>
+                  <h2>Historial completo de ventas</h2>
                 </div>
+              </div>
 
-                {recentOrders.length > 0 ? (
-                  <div className="admin-orders-list">
-                    {recentOrders.map((order) => (
-                      <div key={order.id} className="admin-order-item">
-                        <div>
-                          <strong>Orden #{order.id}</strong>
-                          <p>{order.cliente}</p>
-                        </div>
-                        <div className="admin-order-meta">
-                          <span>{formatCurrency(order.total)}</span>
-                          <small>{formatDate(order.creado_at)}</small>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="admin-empty-state compact">
-                    <h3>Sin órdenes registradas</h3>
-                    <p>Cuando se generen ventas, aquí verás la actividad más reciente.</p>
-                  </div>
-                )}
-              </article>
+              <div className="admin-table-controls">
+                <input
+                  type="text"
+                  className="admin-search-input"
+                  placeholder="Buscar por cliente, email o # orden..."
+                  value={orderSearch}
+                  onChange={(e) => { setOrderSearch(e.target.value); setOrderPage(0); }}
+                />
+                <select
+                  className="admin-filter-select"
+                  value={orderStatusFilter}
+                  onChange={(e) => { setOrderStatusFilter(e.target.value); setOrderPage(0); }}
+                >
+                  <option value="all">Todos los estados</option>
+                  <option value="pendiente">Pendiente</option>
+                  <option value="pagado">Pagado</option>
+                  <option value="enviado">Enviado</option>
+                  <option value="entregado">Entregado</option>
+                </select>
+              </div>
 
+              {paginatedOrders.length > 0 ? (
+                <>
+                  <div className="admin-products-table-wrap">
+                    <table className="admin-products-table admin-orders-table">
+                      <thead>
+                        <tr>
+                          <th>#</th>
+                          <th>Cliente</th>
+                          <th>Email</th>
+                          <th>Total</th>
+                          <th>Estado</th>
+                          <th>Fecha</th>
+                          <th>Acciones</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {paginatedOrders.map((order) => (
+                          <tr key={order.id} className="admin-order-row" onClick={() => handleOrderClick(order.id)}>
+                            <td><strong>{order.id}</strong></td>
+                            <td>{order.cliente}</td>
+                            <td><small>{order.cliente_email || '—'}</small></td>
+                            <td>{formatCurrency(order.total)}</td>
+                            <td><span className={`admin-status-badge is-${order.estado}`}>{order.estado}</span></td>
+                            <td><small>{formatDate(order.creado_at)}</small></td>
+                            <td>
+                              <button
+                                type="button"
+                                className="admin-secondary-button admin-edit-btn"
+                                onClick={(e) => { e.stopPropagation(); handleOrderClick(order.id); }}
+                              >
+                                Ver detalle
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="admin-pagination">
+                    <button type="button" disabled={orderPage === 0} onClick={() => setOrderPage((p) => p - 1)}>← Anterior</button>
+                    <span>Página {orderPage + 1} de {orderTotalPages} ({filteredOrders.length} resultados)</span>
+                    <button type="button" disabled={orderPage + 1 >= orderTotalPages} onClick={() => setOrderPage((p) => p + 1)}>Siguiente →</button>
+                  </div>
+                </>
+              ) : (
+                <div className="admin-empty-state compact">
+                  <h3>Sin resultados</h3>
+                  <p>{recentOrders.length > 0 ? 'No hay órdenes que coincidan con los filtros.' : 'Cuando se generen ventas, aquí verás el historial completo.'}</p>
+                </div>
+              )}
+            </section>
+
+            <section className="admin-report-grid admin-report-grid-secondary">
               <article className="admin-panel">
                 <div className="admin-panel-head">
                   <div>
@@ -382,6 +516,29 @@ function AdminDashboardPage({ user, onProductCreated }) {
                     <div className="admin-empty-state compact">
                       <h3>Sin categorías disponibles</h3>
                       <p>El inventario aparecerá aquí apenas existan productos cargados.</p>
+                    </div>
+                  )}
+                </div>
+              </article>
+
+              <article className="admin-panel">
+                <div className="admin-panel-head">
+                  <div>
+                    <p className="admin-panel-kicker">Alertas</p>
+                    <h2>Estado del sistema</h2>
+                  </div>
+                </div>
+
+                <div className="admin-alert-list">
+                  {alerts.length > 0 ? alerts.map((alert) => (
+                    <div key={alert.id} className="admin-alert-card">
+                      <strong>{alert.title}</strong>
+                      <p>{alert.detail}</p>
+                    </div>
+                  )) : (
+                    <div className="admin-alert-card is-neutral">
+                      <strong>Sin alertas críticas</strong>
+                      <p>El panel no detecta incidentes relevantes en este momento.</p>
                     </div>
                   )}
                 </div>
@@ -503,35 +660,204 @@ function AdminDashboardPage({ user, onProductCreated }) {
                 </div>
               </div>
 
-              <div className="admin-products-table-wrap">
-                <table className="admin-products-table">
-                  <thead>
-                    <tr>
-                      <th>Producto</th>
-                      <th>Categoría</th>
-                      <th>Tono</th>
-                      <th>Stock</th>
-                      <th>Precio</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {products.map((product) => (
-                      <tr key={product.id}>
-                        <td>
-                          <strong>{product.nombre}</strong>
-                          <small>{product.etiqueta || 'Online'}</small>
-                        </td>
-                        <td>{product.categoria}</td>
-                        <td>{product.tono}</td>
-                        <td>{formatInteger(product.stock)}</td>
-                        <td>{formatCurrency(product.precio)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="admin-table-controls">
+                <input
+                  type="text"
+                  className="admin-search-input"
+                  placeholder="Buscar por nombre o etiqueta..."
+                  value={productSearch}
+                  onChange={(e) => { setProductSearch(e.target.value); setProductPage(0); }}
+                />
+                <select
+                  className="admin-filter-select"
+                  value={productCategoryFilter}
+                  onChange={(e) => { setProductCategoryFilter(e.target.value); setProductPage(0); }}
+                >
+                  <option value="all">Todas las categorías</option>
+                  {productCategories.map((cat) => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
               </div>
+
+              {paginatedProducts.length > 0 ? (
+                <>
+                  <div className="admin-products-table-wrap">
+                    <table className="admin-products-table">
+                      <thead>
+                        <tr>
+                          <th>Producto</th>
+                          <th>Categoría</th>
+                          <th>Tono</th>
+                          <th>Stock</th>
+                          <th>Precio</th>
+                          <th>Acciones</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {paginatedProducts.map((product) => (
+                          <tr key={product.id}>
+                            <td>
+                              <strong>{product.nombre}</strong>
+                              <small>{product.etiqueta || 'Online'}</small>
+                            </td>
+                            <td>{product.categoria}</td>
+                            <td>{product.tono}</td>
+                            <td>{formatInteger(product.stock)}</td>
+                            <td>{formatCurrency(product.precio)}</td>
+                            <td>
+                              <button
+                                type="button"
+                                className="admin-secondary-button admin-edit-btn"
+                                onClick={() => handleEditClick(product)}
+                              >
+                                Editar
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="admin-pagination">
+                    <button type="button" disabled={productPage === 0} onClick={() => setProductPage((p) => p - 1)}>← Anterior</button>
+                    <span>Página {productPage + 1} de {productTotalPages} ({filteredProducts.length} resultados)</span>
+                    <button type="button" disabled={productPage + 1 >= productTotalPages} onClick={() => setProductPage((p) => p + 1)}>Siguiente →</button>
+                  </div>
+                </>
+              ) : (
+                <div className="admin-empty-state compact">
+                  <h3>Sin resultados</h3>
+                  <p>{products.length > 0 ? 'No hay productos que coincidan con los filtros.' : 'El catálogo aparecerá aquí apenas existan productos.'}</p>
+                </div>
+              )}
             </section>
           </>
+        )}
+
+        {selectedOrder && (
+          <div className="admin-modal-overlay" onClick={() => setSelectedOrder(null)}>
+            <div className="admin-modal admin-order-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="admin-modal-head">
+                <h2>Orden #{selectedOrder}</h2>
+                <button type="button" className="admin-modal-close" onClick={() => setSelectedOrder(null)}>✕</button>
+              </div>
+
+              {loadingOrder ? (
+                <div className="admin-empty-state compact">
+                  <p>Cargando detalle de la orden...</p>
+                </div>
+              ) : orderDetail ? (
+                <div className="admin-order-detail">
+                  <div className="admin-order-detail-header">
+                    <div>
+                      <strong>{orderDetail.cliente}</strong>
+                      <small>{orderDetail.cliente_email || '—'}</small>
+                    </div>
+                    <div className="admin-order-detail-meta">
+                      <span className={`admin-status-badge is-${orderDetail.estado}`}>{orderDetail.estado}</span>
+                      <small>{formatDate(orderDetail.creado_at)}</small>
+                    </div>
+                  </div>
+
+                  <div className="admin-products-table-wrap">
+                    <table className="admin-products-table">
+                      <thead>
+                        <tr>
+                          <th>Producto</th>
+                          <th>Categoría</th>
+                          <th>Cantidad</th>
+                          <th>Precio unit.</th>
+                          <th>Subtotal</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {orderDetail.items.map((item) => (
+                          <tr key={item.id}>
+                            <td>
+                              <div className="admin-order-item-cell">
+                                {item.imagen_url && (
+                                  <img src={item.imagen_url} alt={item.nombre} className="admin-order-item-img" loading="lazy" referrerPolicy="no-referrer" />
+                                )}
+                                <strong>{item.nombre || 'Producto eliminado'}</strong>
+                              </div>
+                            </td>
+                            <td>{item.categoria || '—'}</td>
+                            <td>{item.cantidad}</td>
+                            <td>{formatCurrency(item.precio)}</td>
+                            <td>{formatCurrency(item.precio * item.cantidad)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr>
+                          <td colSpan="4" style={{ textAlign: 'right', fontWeight: 600 }}>Total</td>
+                          <td><strong>{formatCurrency(orderDetail.total)}</strong></td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        )}
+
+        {editingProduct && (
+          <div className="admin-modal-overlay" onClick={() => setEditingProduct(null)}>
+            <div className="admin-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="admin-modal-head">
+                <h2>Editar producto</h2>
+                <button type="button" className="admin-modal-close" onClick={() => setEditingProduct(null)}>✕</button>
+              </div>
+              <form className="admin-product-form" onSubmit={handleSaveEdit}>
+                <div className="admin-form-grid">
+                  <label className="admin-field admin-field-wide">
+                    <span>Nombre</span>
+                    <input type="text" name="nombre" value={editForm.nombre} onChange={handleEditFieldChange} required />
+                  </label>
+                  <label className="admin-field admin-field-wide">
+                    <span>Descripción</span>
+                    <textarea name="descripcion" value={editForm.descripcion} onChange={handleEditFieldChange} rows="3" />
+                  </label>
+                  <label className="admin-field">
+                    <span>Precio</span>
+                    <input type="number" min="1" step="0.01" name="precio" value={editForm.precio} onChange={handleEditFieldChange} required />
+                  </label>
+                  <label className="admin-field">
+                    <span>Stock</span>
+                    <input type="number" min="0" step="1" name="stock" value={editForm.stock} onChange={handleEditFieldChange} />
+                  </label>
+                  <label className="admin-field">
+                    <span>Categoría</span>
+                    <input type="text" name="categoria" value={editForm.categoria} onChange={handleEditFieldChange} />
+                  </label>
+                  <label className="admin-field">
+                    <span>Tono</span>
+                    <input type="text" name="tono" value={editForm.tono} onChange={handleEditFieldChange} />
+                  </label>
+                  <label className="admin-field">
+                    <span>Material</span>
+                    <input type="text" name="material" value={editForm.material} onChange={handleEditFieldChange} />
+                  </label>
+                  <label className="admin-field">
+                    <span>Etiqueta</span>
+                    <input type="text" name="etiqueta" value={editForm.etiqueta} onChange={handleEditFieldChange} />
+                  </label>
+                  <label className="admin-field admin-field-wide">
+                    <span>Imagen URL</span>
+                    <input type="url" name="imagen_url" value={editForm.imagen_url} onChange={handleEditFieldChange} />
+                  </label>
+                </div>
+                <div className="admin-modal-actions">
+                  <button type="button" className="admin-secondary-button" onClick={() => setEditingProduct(null)}>Cancelar</button>
+                  <button type="submit" className="admin-primary-button" disabled={isSavingEdit}>
+                    {isSavingEdit ? 'Guardando...' : 'Guardar cambios'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
         )}
       </section>
     </main>
