@@ -10,17 +10,10 @@ import {
   updateAddressApi,
   updateMyProfile,
 } from '../api';
+import { formatPrice, normalizePrice } from '../utils/pricing.js';
 import './UserAccountPage.css';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function formatPrice(value) {
-  return new Intl.NumberFormat('es-MX', {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: 0,
-  }).format(value);
-}
 
 function formatDate(dateStr) {
   return new Intl.DateTimeFormat('es-MX', {
@@ -152,6 +145,12 @@ function TabResumen({ user, orders, wishlistIds, cartItems, ordersLoading }) {
                   <span>{formatDate(order.creado_at)}</span>
                   <strong>{formatPrice(order.total)}</strong>
                 </div>
+                {order.referencia_pago ? (
+                  <div className="acct-order-meta">
+                    <span>Ref: {order.referencia_pago}</span>
+                    <span>Pago: {order.payment_status || 'approved'}</span>
+                  </div>
+                ) : null}
                 <div className="acct-order-items-preview">
                   {order.items.slice(0, 3).map((item) => (
                     <img key={item.producto_id} src={item.imagen_url} alt={item.nombre} className="acct-order-thumb" loading="lazy" />
@@ -222,25 +221,31 @@ function TabPedidos({ orders, loading }) {
             </button>
 
             {expanded === order.id && (
-              <ul className="acct-order-items">
-                {order.items.length === 0 ? (
-                  <li className="acct-order-item-empty">Sin detalles disponibles</li>
-                ) : (
-                  order.items.map((item) => (
-                    <li key={item.producto_id} className="acct-order-item">
-                      <img src={item.imagen_url} alt={item.nombre} className="acct-order-item-img" loading="lazy" />
-                      <div className="acct-order-item-info">
-                        <span className="acct-order-item-name">{item.nombre}</span>
-                        <span className="acct-order-item-tono">{item.tono}</span>
-                      </div>
-                      <div className="acct-order-item-price">
-                        <span>x{item.cantidad}</span>
-                        <strong>{formatPrice(item.precio * item.cantidad)}</strong>
-                      </div>
-                    </li>
-                  ))
-                )}
-              </ul>
+              <>
+                <div className="acct-order-meta" style={{ padding: '0 1rem 1rem' }}>
+                  <span>Ref: {order.referencia_pago || 'Sin referencia'}</span>
+                  <span>Pago: {order.payment_status || 'approved'}</span>
+                </div>
+                <ul className="acct-order-items">
+                  {order.items.length === 0 ? (
+                    <li className="acct-order-item-empty">Sin detalles disponibles</li>
+                  ) : (
+                    order.items.map((item) => (
+                      <li key={item.producto_id} className="acct-order-item">
+                        <img src={item.imagen_url} alt={item.nombre} className="acct-order-item-img" loading="lazy" />
+                        <div className="acct-order-item-info">
+                          <span className="acct-order-item-name">{item.nombre}</span>
+                          <span className="acct-order-item-tono">{item.tono}</span>
+                        </div>
+                        <div className="acct-order-item-price">
+                          <span>x{item.cantidad}</span>
+                          <strong>{formatPrice(item.precio * item.cantidad)}</strong>
+                        </div>
+                      </li>
+                    ))
+                  )}
+                </ul>
+              </>
             )}
           </div>
         ))}
@@ -311,7 +316,7 @@ function TabFavoritos({ catalogProducts, wishlistIds, onAddToCart, onToggleWishl
 // ─── Tab: Carrito ─────────────────────────────────────────────────────────────
 
 function TabCarrito({ cartItems, onIncrement, onDecrement, onRemove }) {
-  const total = cartItems.reduce((s, i) => s + i.precio * i.quantity, 0);
+  const total = cartItems.reduce((sum, item) => sum + normalizePrice(item.precio) * item.quantity, 0);
   const count = cartItems.reduce((s, i) => s + i.quantity, 0);
 
   if (!cartItems.length) {

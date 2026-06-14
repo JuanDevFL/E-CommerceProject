@@ -1,14 +1,8 @@
 import { Link } from 'react-router-dom';
+import { formatPrice } from '../utils/pricing.js';
+import { translateCategoryLabel, translateProductTagLabel } from '../utils/catalogLabels.js';
 
-function formatPrice(value) {
-  return new Intl.NumberFormat('es-MX', {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: 0,
-  }).format(value);
-}
-
-function WishlistPage({ products, wishlistIds = [], onAddToCart, onToggleWishlist }) {
+function WishlistPage({ products, wishlistIds = [], onAddToCart, onBuyNow, onToggleWishlist }) {
   const wishlistProducts = products.filter((p) => wishlistIds.includes(p.id));
 
   return (
@@ -36,8 +30,8 @@ function WishlistPage({ products, wishlistIds = [], onAddToCart, onToggleWishlis
                   <img src={product.imagen_url} alt={product.nombre} className="product-card-image" loading="lazy" decoding="async" referrerPolicy="no-referrer" />
                 </Link>
                 <div className="product-card-badges">
-                  <span className="product-badge product-badge-primary">{product.etiqueta}</span>
-                  <span className="product-badge">{product.categoria}</span>
+                  <span className="product-badge product-badge-primary">{translateProductTagLabel(product.etiqueta)}</span>
+                  <span className="product-badge">{translateCategoryLabel(product.categoria)}</span>
                 </div>
                 <button
                   type="button"
@@ -70,14 +64,24 @@ function WishlistPage({ products, wishlistIds = [], onAddToCart, onToggleWishlis
                   <span className={`product-card-stock ${product.stock === 0 ? 'is-empty' : ''}`}>
                     {product.stock > 0 ? `${product.stock} disponibles` : 'Próximamente'}
                   </span>
-                  <button
-                    type="button"
-                    className="btn-primary rounded-full px-5 py-3 text-sm font-semibold"
-                    onClick={() => onAddToCart(product)}
-                    disabled={product.stock === 0}
-                  >
-                    {product.stock > 0 ? 'Agregar al carrito' : 'Sin stock'}
-                  </button>
+                  <div className="product-card-actions">
+                    <button
+                      type="button"
+                      className="btn-secondary rounded-full px-5 py-3 text-sm font-semibold"
+                      onClick={() => onAddToCart(product)}
+                      disabled={product.stock === 0}
+                    >
+                      {product.stock > 0 ? 'Agregar al carrito' : 'Agotado'}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-primary rounded-full px-5 py-3 text-sm font-semibold"
+                      onClick={() => onBuyNow?.(product)}
+                      disabled={product.stock === 0}
+                    >
+                      Comprar ahora
+                    </button>
+                  </div>
                 </div>
               </div>
             </article>

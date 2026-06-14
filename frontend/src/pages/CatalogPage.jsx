@@ -1,6 +1,6 @@
 import ProductCatalog from '../components/ProductCatalog.jsx';
 
-function CatalogPage({ catalogProducts, catalogNotice, catalogLoading, wishlistIds, onAddToCart, onToggleWishlist }) {
+function CatalogPage({ catalogProducts, catalogNotice, catalogLoading, wishlistIds, onAddToCart, onBuyNow, onToggleWishlist }) {
   return (
     <main className="catalog-page">
       <div className="catalog-page-header">
@@ -17,6 +17,7 @@ function CatalogPage({ catalogProducts, catalogNotice, catalogLoading, wishlistI
         isLoading={catalogLoading}
         wishlistIds={wishlistIds}
         onAddToCart={onAddToCart}
+        onBuyNow={onBuyNow}
         onToggleWishlist={onToggleWishlist}
       />
     </main>

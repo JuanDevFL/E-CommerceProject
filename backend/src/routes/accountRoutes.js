@@ -2,6 +2,7 @@ import express from 'express';
 import {
   changePassword,
   createAddress,
+  createMyOrder,
   deleteAddress,
   getMyAddresses,
   getMyOrders,
@@ -20,6 +21,7 @@ router.put('/profile', updateMyProfile);
 router.put('/password', changePassword);
 
 router.get('/orders', getMyOrders);
+router.post('/orders', createMyOrder);
 
 router.get('/addresses', getMyAddresses);
 router.post('/addresses', createAddress);

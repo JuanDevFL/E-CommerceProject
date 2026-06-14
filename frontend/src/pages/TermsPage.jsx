@@ -25,7 +25,7 @@ function TermsPage() {
         <article className="legal-block">
           <h2>3. Compras, disponibilidad y precios</h2>
           <p>
-            Los productos están sujetos a disponibilidad de inventario. Los precios se muestran en USD
+            Los productos están sujetos a disponibilidad de inventario. Los precios se muestran en COP
             y pueden ser actualizados sin previo aviso, salvo ordenes ya confirmadas.
           </p>
         </article>

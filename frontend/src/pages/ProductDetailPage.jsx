@@ -1,14 +1,8 @@
 import { useParams, Link } from 'react-router-dom';
+import { formatPrice } from '../utils/pricing.js';
+import { translateCategoryLabel, translateProductTagLabel } from '../utils/catalogLabels.js';
 
-function formatPrice(value) {
-  return new Intl.NumberFormat('es-MX', {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: 0,
-  }).format(value);
-}
-
-function ProductDetailPage({ products, wishlistIds = [], onAddToCart, onToggleWishlist }) {
+function ProductDetailPage({ products, wishlistIds = [], onAddToCart, onBuyNow, onToggleWishlist }) {
   const { productId } = useParams();
   const product = products.find((p) => String(p.id) === String(productId));
 
@@ -49,8 +43,8 @@ function ProductDetailPage({ products, wishlistIds = [], onAddToCart, onToggleWi
             referrerPolicy="no-referrer"
           />
           <div className="product-detail-badges">
-            <span className="product-badge product-badge-primary">{product.etiqueta}</span>
-            <span className="product-badge">{product.categoria}</span>
+            <span className="product-badge product-badge-primary">{translateProductTagLabel(product.etiqueta)}</span>
+            <span className="product-badge">{translateCategoryLabel(product.categoria)}</span>
           </div>
         </div>
 
@@ -73,11 +67,20 @@ function ProductDetailPage({ products, wishlistIds = [], onAddToCart, onToggleWi
           <div className="product-detail-actions">
             <button
               type="button"
-              className="btn-primary rounded-full px-8 py-3.5 text-sm font-semibold"
+              className="btn-secondary rounded-full px-8 py-3.5 text-sm font-semibold"
               onClick={() => onAddToCart(product)}
               disabled={product.stock === 0}
             >
-              {product.stock > 0 ? 'Agregar al carrito' : 'Sin stock'}
+              {product.stock > 0 ? 'Agregar al carrito' : 'Agotado'}
+            </button>
+
+            <button
+              type="button"
+              className="btn-primary rounded-full px-8 py-3.5 text-sm font-semibold"
+              onClick={() => onBuyNow?.(product)}
+              disabled={product.stock === 0}
+            >
+              Comprar ahora
             </button>
 
             <button

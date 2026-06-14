@@ -100,6 +100,20 @@ export async function fetchProductos() {
   return request('/productos', { method: 'GET' });
 }
 
+export async function createGuestOrder(payload) {
+  return request('/checkout/orders', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function fetchWompiWidgetConfig(payload) {
+  return request('/checkout/wompi/widget', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function registerUsuario(payload) {
   return request('/usuarios/register', {
     method: 'POST',
@@ -186,6 +200,10 @@ export async function changePassword(payload) {
 
 export async function fetchMyOrders() {
   return request('/cuenta/orders', { method: 'GET', auth: true });
+}
+
+export async function createMyOrder(payload) {
+  return request('/cuenta/orders', { method: 'POST', auth: true, body: JSON.stringify(payload) });
 }
 
 export async function fetchMyAddresses() {

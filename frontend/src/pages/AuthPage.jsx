@@ -85,13 +85,13 @@ function AuthPage({ onAuthSuccess }) {
           <h1 className="auth-title">Ingresa o crea tu cuenta para guardar favoritos y preparar tu compra.</h1>
           <p className="auth-description">
             Centralizamos el acceso en una sola pantalla para registro e inicio de sesión,
-            con una experiencia limpia y consistente con el resto del storefront.
+            con una experiencia limpia y consistente con el resto de la tienda.
           </p>
 
           <div className="auth-benefits">
             <div className="auth-benefit-card">
               <span className="auth-benefit-kicker">Perfil</span>
-              <p>Guarda tu sesión, consulta tus piezas y prepara el checkout desde el carrito.</p>
+              <p>Guarda tu sesión, consulta tus piezas y prepara la compra desde el carrito.</p>
             </div>
             <div className="auth-benefit-card">
               <span className="auth-benefit-kicker">Colección</span>

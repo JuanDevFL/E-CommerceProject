@@ -1,3 +1,5 @@
+import { normalizePrice } from '../utils/pricing.js';
+
 const curatedFallbackImages = [
   'https://images.pexels.com/photos/36365230/pexels-photo-36365230.jpeg?auto=compress&cs=tinysrgb&w=1600',
   'https://images.pexels.com/photos/23223842/pexels-photo-23223842.jpeg?auto=compress&cs=tinysrgb&w=1600',
@@ -27,7 +29,7 @@ const curatedFallbackImages = [
   'https://images.pexels.com/photos/904350/pexels-photo-904350.jpeg?auto=compress&cs=tinysrgb&w=1600'
 ];
 
-export const curatedProducts = [
+const curatedProductBase = [
   {
     id: 'curated-1',
     nombre: 'Tote Hana',
@@ -342,6 +344,12 @@ export const curatedProducts = [
   }
 ];
 
+export const curatedProducts = curatedProductBase.map((product) => ({
+  ...product,
+  backendId: null,
+  precio: normalizePrice(product.precio),
+}));
+
 const remoteCategories = ['Selección online', 'Colección atelier', 'Drop limitado'];
 const remoteTones = ['Crema', 'Marfil', 'Negro', 'Borgoña'];
 const remoteMaterials = ['Selección Azami', 'Cuero premium', 'Edición online'];
@@ -353,9 +361,10 @@ export function normalizeRemoteProducts(products) {
 
   return products.map((product, index) => ({
     id: `remote-${product.id ?? index}`,
+    backendId: Number(product.id) || null,
     nombre: product.nombre || `Producto ${index + 1}`,
     descripcion: product.descripcion || 'Pieza disponible en el catálogo en vivo de Azami.',
-    precio: Number(product.precio) || 0,
+    precio: normalizePrice(product.precio),
     imagen_url: product.imagen_url || curatedFallbackImages[index % curatedFallbackImages.length],
     stock: Number(product.stock) || 0,
     categoria: product.categoria || remoteCategories[index % remoteCategories.length],

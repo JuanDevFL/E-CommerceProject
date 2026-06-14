@@ -1,4 +1,6 @@
-export const seedProducts = [
+const usdToCop = (value) => Math.round(Number(value || 0) * 4000);
+
+const seedProductBase = [
   {
     nombre: 'Tote Hana',
     descripcion: 'Tote estructurado con interior amplio y caída limpia para jornadas largas.',
@@ -286,3 +288,8 @@ export const seedProducts = [
     etiqueta: 'Nuevo'
   }
 ];
+
+export const seedProducts = seedProductBase.map((product) => ({
+  ...product,
+  precio: usdToCop(product.precio),
+}));

@@ -4,12 +4,13 @@ import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import { isMockLoginMode } from './data/mockAuthUsers.js';
+import checkoutRoutes from './routes/checkoutRoutes.js';
 import { requestLogger } from './middleware/requestLogger.js';
 import accountRoutes from './routes/accountRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import productRoutes from './routes/productRoutes.js';
 import userRoutes from './routes/userRoutes.js';
-import { ensureActividadLogsTable, ensureAddressesTable, ensurePasswordResetTokensTable, ensureRefreshTokensTable, ensureUsuariosTable } from './userSchema.js';
+import { ensureActividadLogsTable, ensureAddressesTable, ensureOrdersTable, ensurePasswordResetTokensTable, ensureRefreshTokensTable, ensureUsuariosTable } from './userSchema.js';
 
 dotenv.config();
 
@@ -54,6 +55,7 @@ app.get('/', (req, res) => {
 
 app.use('/api/productos', productRoutes);
 app.use('/api/usuarios', userRoutes);
+app.use('/api/checkout', checkoutRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/cuenta', accountRoutes);
 
@@ -69,6 +71,7 @@ async function bootstrap() {
       await ensurePasswordResetTokensTable();
       await ensureActividadLogsTable();
       await ensureRefreshTokensTable();
+      await ensureOrdersTable();
       await ensureAddressesTable();
     }
 

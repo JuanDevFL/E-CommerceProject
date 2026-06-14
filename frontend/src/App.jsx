@@ -5,6 +5,7 @@ import ConsentBanner from './components/ConsentBanner.jsx';
 import Navbar from './components/Navbar.jsx';
 import SiteFooter from './components/SiteFooter.jsx';
 import { curatedProducts, normalizeRemoteProducts } from './data/curatedProducts.js';
+import { normalizePrice } from './utils/pricing.js';
 import AboutPage from './pages/AboutPage.jsx';
 import AdminDashboardPage from './pages/AdminDashboardPage.jsx';
 import AuthPage from './pages/AuthPage.jsx';
@@ -23,25 +24,81 @@ import logoNavBar from './assets/LogoNavBar.svg';
 const THEME_STORAGE_KEY = 'azami-theme';
 const USER_STORAGE_KEY = 'azami-user';
 const CONSENT_STORAGE_KEY = 'azami-consent';
-const CONSENT_VERSION = '2026-05-07';
+const CONSENT_VERSION = '2026-06-04';
+const GUEST_CART_KEY = 'azami-cart-guest';
+
+function getCartStorage() {
+  return window.sessionStorage;
+}
 
 function cartKeyForUser(user) {
-  return user?.id ? `azami-cart-${user.id}` : null;
+  return user?.id ? `azami-cart-${user.id}` : GUEST_CART_KEY;
 }
 
 function wishlistKeyForUser(user) {
   return user?.id ? `azami-wishlist-${user.id}` : null;
 }
 
-function loadPersistedArray(key) {
+function loadStoredArray(storage, key) {
   if (!key) return [];
   try {
-    const stored = localStorage.getItem(key);
+    const stored = storage.getItem(key);
     const parsed = stored ? JSON.parse(stored) : [];
     return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
   }
+}
+
+function loadCartArray(key) {
+  if (!key) {
+    return [];
+  }
+
+  try {
+    getCartStorage().removeItem(key);
+  } catch {
+    // ignore
+  }
+
+  return [];
+}
+
+function loadPersistedArray(key) {
+  return loadStoredArray(localStorage, key);
+}
+
+function buildCartItem(product) {
+  return {
+    id: product.id,
+    productId: product.backendId || null,
+    nombre: product.nombre,
+    precio: normalizePrice(product.precio),
+    imagen_url: product.imagen_url,
+    tono: product.tono,
+    stock: product.stock,
+    quantity: 1,
+  };
+}
+
+function upsertCartItems(currentItems, product, quantityToAdd = 1) {
+  const existingItem = currentItems.find((item) => item.id === product.id);
+
+  if (existingItem) {
+    return currentItems.map((item) => (
+      item.id === product.id
+        ? { ...item, quantity: Math.min(item.quantity + quantityToAdd, Math.max(product.stock, 1)) }
+        : item
+    ));
+  }
+
+  return [
+    ...currentItems,
+    {
+      ...buildCartItem(product),
+      quantity: Math.min(quantityToAdd, Math.max(product.stock, 1)),
+    },
+  ];
 }
 
 function getInitialTheme() {
@@ -90,7 +147,7 @@ function getInitialUser() {
 }
 
 function getInitialCart() {
-  return [];
+  return loadCartArray(GUEST_CART_KEY);
 }
 
 function getStoredConsent() {
@@ -131,7 +188,7 @@ function App() {
   const [user, setUser] = useState(getInitialUser);
   const [cartItems, setCartItems] = useState(() => {
     const initial = getInitialUser();
-    return loadPersistedArray(cartKeyForUser(initial));
+    return loadCartArray(cartKeyForUser(initial));
   });
   const [wishlistIds, setWishlistIds] = useState(() => {
     const initial = getInitialUser();
@@ -205,7 +262,7 @@ function App() {
   useEffect(() => {
     const key = cartKeyForUser(user);
     if (key) {
-      localStorage.setItem(key, JSON.stringify(cartItems));
+      getCartStorage().removeItem(key);
     }
   }, [cartItems, user]);
 
@@ -235,9 +292,9 @@ function App() {
   const handleLogout = useCallback(() => {
     // Notifica al backend para revocar el refresh token (cookie httpOnly)
     logoutApi().catch(() => {});
-    // Limpia el carrito del usuario del localStorage al cerrar sesión
+    // Limpia el carrito de la sesión al cerrar sesión
     const cartKey = cartKeyForUser(user);
-    if (cartKey) localStorage.removeItem(cartKey);
+    if (cartKey) getCartStorage().removeItem(cartKey);
     setUser(null);
     setCartItems([]);
     setWishlistIds([]);
@@ -283,10 +340,12 @@ function App() {
       authSource: nextUser.authSource || 'database',
     };
 
+    const mergedCart = [...cartItems];
+
     setUser(normalizedUser);
     localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(normalizedUser));
-    // No cargar carrito anterior al iniciar sesión — empieza limpio
-    setCartItems([]);
+    getCartStorage().removeItem(GUEST_CART_KEY);
+    setCartItems(mergedCart);
     setWishlistIds([]);
   };
 
@@ -295,13 +354,20 @@ function App() {
   };
 
   const handleOpenCheckout = () => {
-    if (!user) {
-      navigate('/auth');
-      return;
-    }
-
     navigate('/checkout');
   };
+
+  const handleOrderCreated = useCallback((order, options = {}) => {
+    setCartItems([]);
+    setCartNotice({
+      id: `order-${order.id}-${Date.now()}`,
+      text: `Pedido de prueba ${order.referencia_pago || `#${order.id}`} guardado correctamente.`,
+    });
+
+    if (options.redirectToAccount) {
+      navigate('/mi-cuenta');
+    }
+  }, [navigate]);
 
   const handleUserUpdated = ({ name, email }) => {
     setUser((prev) => {
@@ -346,43 +412,25 @@ function App() {
   };
 
   const handleAddToCart = (product) => {
-    if (!user) {
-      navigate('/auth');
-      return;
-    }
     if (product.stock === 0) {
       return;
     }
 
-    setCartItems((currentItems) => {
-      const existingItem = currentItems.find((item) => item.id === product.id);
-
-      if (existingItem) {
-        return currentItems.map((item) => (
-          item.id === product.id
-            ? { ...item, quantity: Math.min(item.quantity + 1, Math.max(product.stock, 1)) }
-            : item
-        ));
-      }
-
-      return [
-        ...currentItems,
-        {
-          id: product.id,
-          nombre: product.nombre,
-          precio: product.precio,
-          imagen_url: product.imagen_url,
-          tono: product.tono,
-          stock: product.stock,
-          quantity: 1,
-        },
-      ];
-    });
+    setCartItems((currentItems) => upsertCartItems(currentItems, product));
 
     setCartNotice({
       id: `${product.id}-${Date.now()}`,
       text: `${product.nombre} se agregó al carrito correctamente.`,
     });
+  };
+
+  const handleBuyNow = (product) => {
+    if (product.stock === 0) {
+      return;
+    }
+
+    setCartItems((currentItems) => upsertCartItems(currentItems, product));
+    navigate('/checkout');
   };
 
   const handleIncrementCartItem = (productId) => {
@@ -425,7 +473,7 @@ function App() {
 
   const catalogProducts = remoteProducts.length > 0 ? remoteProducts : curatedProducts;
   const cartCount = cartItems.reduce((total, item) => total + item.quantity, 0);
-  const cartSubtotal = cartItems.reduce((total, item) => total + (item.precio * item.quantity), 0);
+  const cartSubtotal = cartItems.reduce((total, item) => total + (normalizePrice(item.precio) * item.quantity), 0);
 
   return (
     <div className="site-shell bg-background text-text">
@@ -474,6 +522,7 @@ function App() {
               catalogLoading={catalogLoading}
               wishlistIds={wishlistIds}
               onAddToCart={handleAddToCart}
+              onBuyNow={handleBuyNow}
               onToggleWishlist={handleToggleWishlist}
             />
           }
@@ -485,6 +534,7 @@ function App() {
               products={catalogProducts}
               wishlistIds={wishlistIds}
               onAddToCart={handleAddToCart}
+              onBuyNow={handleBuyNow}
               onToggleWishlist={handleToggleWishlist}
             />
           }
@@ -500,6 +550,7 @@ function App() {
               products={catalogProducts}
               wishlistIds={wishlistIds}
               onAddToCart={handleAddToCart}
+              onBuyNow={handleBuyNow}
               onToggleWishlist={handleToggleWishlist}
             />
           }
@@ -507,13 +558,12 @@ function App() {
         <Route
           path="/checkout"
           element={
-            <ProtectedRoute user={user}>
-              <CheckoutPage
-                user={user}
-                cartItems={cartItems}
-                onBackToCatalog={() => navigate('/catalogo')}
-              />
-            </ProtectedRoute>
+            <CheckoutPage
+              user={user}
+              cartItems={cartItems}
+              onBackToCatalog={() => navigate('/catalogo')}
+              onOrderCreated={handleOrderCreated}
+            />
           }
         />
         <Route

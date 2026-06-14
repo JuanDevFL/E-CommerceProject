@@ -35,3 +35,27 @@ export const forgotPasswordLimiter = rateLimit({
   legacyHeaders: false,
   message: { error: 'Demasiadas solicitudes de recuperación. Intenta de nuevo en una hora.' },
 });
+
+/**
+ * Límite para creación de pedidos públicos: 8 intentos por IP cada 15 minutos.
+ * Reduce abuso sobre el checkout invitado.
+ */
+export const checkoutOrderLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 8,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Demasiados intentos de checkout. Intenta de nuevo en 15 minutos.' },
+});
+
+/**
+ * Límite para generación de firma/config del widget: 20 solicitudes por IP cada 15 minutos.
+ * Evita automatización agresiva del endpoint público de Wompi.
+ */
+export const checkoutWidgetLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Demasiadas solicitudes de pago. Intenta de nuevo en unos minutos.' },
+});

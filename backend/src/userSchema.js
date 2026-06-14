@@ -123,6 +123,108 @@ export async function ensureRefreshTokensTable() {
   `);
 }
 
+export async function ensureOrdersTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS ordenes (
+      id                   INT AUTO_INCREMENT PRIMARY KEY,
+      usuario_id           INT NULL,
+      cliente_tipo         VARCHAR(20) NOT NULL DEFAULT 'registered',
+      cliente_nombre       VARCHAR(255) NULL,
+      cliente_email        VARCHAR(255) NULL,
+      cliente_telefono     VARCHAR(30) NULL,
+      subtotal             DECIMAL(10,2) NOT NULL DEFAULT 0,
+      envio                DECIMAL(10,2) NOT NULL DEFAULT 0,
+      total                DECIMAL(10,2) NOT NULL,
+      moneda               VARCHAR(3) NOT NULL DEFAULT 'COP',
+      estado               VARCHAR(50) DEFAULT 'pendiente',
+      referencia_pago      VARCHAR(80) NULL,
+      payment_provider     VARCHAR(40) NOT NULL DEFAULT 'mock_local',
+      payment_method       VARCHAR(40) NOT NULL DEFAULT 'sandbox_local',
+      payment_status       VARCHAR(40) NOT NULL DEFAULT 'approved',
+      direccion_envio_json TEXT NULL,
+      creado_at            TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_orden_usuario (usuario_id),
+      INDEX idx_orden_estado (estado),
+      INDEX idx_orden_ref (referencia_pago),
+      FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS orden_items (
+      id          INT AUTO_INCREMENT PRIMARY KEY,
+      orden_id    INT NOT NULL,
+      producto_id INT NOT NULL,
+      cantidad    INT NOT NULL,
+      precio      DECIMAL(10,2) NOT NULL,
+      FOREIGN KEY (orden_id) REFERENCES ordenes(id),
+      FOREIGN KEY (producto_id) REFERENCES productos(id)
+    )
+  `);
+
+  const databaseName = process.env.DB_NAME || 'ecommerce_db';
+  const [rows] = await pool.query(
+    `SELECT COLUMN_NAME, IS_NULLABLE
+     FROM INFORMATION_SCHEMA.COLUMNS
+     WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'ordenes'`,
+    [databaseName]
+  );
+
+  const existingColumns = new Map(rows.map((row) => [row.COLUMN_NAME, row]));
+
+  if (existingColumns.get('usuario_id')?.IS_NULLABLE !== 'YES') {
+    await pool.query('ALTER TABLE ordenes MODIFY COLUMN usuario_id INT NULL');
+  }
+
+  if (!existingColumns.has('cliente_tipo')) {
+    await pool.query("ALTER TABLE ordenes ADD COLUMN cliente_tipo VARCHAR(20) NOT NULL DEFAULT 'registered' AFTER usuario_id");
+  }
+
+  if (!existingColumns.has('cliente_nombre')) {
+    await pool.query('ALTER TABLE ordenes ADD COLUMN cliente_nombre VARCHAR(255) NULL AFTER cliente_tipo');
+  }
+
+  if (!existingColumns.has('cliente_email')) {
+    await pool.query('ALTER TABLE ordenes ADD COLUMN cliente_email VARCHAR(255) NULL AFTER cliente_nombre');
+  }
+
+  if (!existingColumns.has('cliente_telefono')) {
+    await pool.query('ALTER TABLE ordenes ADD COLUMN cliente_telefono VARCHAR(30) NULL AFTER cliente_email');
+  }
+
+  if (!existingColumns.has('subtotal')) {
+    await pool.query('ALTER TABLE ordenes ADD COLUMN subtotal DECIMAL(10,2) NOT NULL DEFAULT 0 AFTER usuario_id');
+  }
+
+  if (!existingColumns.has('envio')) {
+    await pool.query('ALTER TABLE ordenes ADD COLUMN envio DECIMAL(10,2) NOT NULL DEFAULT 0 AFTER subtotal');
+  }
+
+  if (!existingColumns.has('moneda')) {
+    await pool.query("ALTER TABLE ordenes ADD COLUMN moneda VARCHAR(3) NOT NULL DEFAULT 'COP' AFTER total");
+  }
+
+  if (!existingColumns.has('referencia_pago')) {
+    await pool.query('ALTER TABLE ordenes ADD COLUMN referencia_pago VARCHAR(80) NULL AFTER estado');
+  }
+
+  if (!existingColumns.has('payment_provider')) {
+    await pool.query("ALTER TABLE ordenes ADD COLUMN payment_provider VARCHAR(40) NOT NULL DEFAULT 'mock_local' AFTER referencia_pago");
+  }
+
+  if (!existingColumns.has('payment_method')) {
+    await pool.query("ALTER TABLE ordenes ADD COLUMN payment_method VARCHAR(40) NOT NULL DEFAULT 'sandbox_local' AFTER payment_provider");
+  }
+
+  if (!existingColumns.has('payment_status')) {
+    await pool.query("ALTER TABLE ordenes ADD COLUMN payment_status VARCHAR(40) NOT NULL DEFAULT 'approved' AFTER payment_method");
+  }
+
+  if (!existingColumns.has('direccion_envio_json')) {
+    await pool.query('ALTER TABLE ordenes ADD COLUMN direccion_envio_json TEXT NULL AFTER payment_status');
+  }
+}
+
 export async function ensureAddressesTable() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS direcciones_envio (

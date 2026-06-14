@@ -3,6 +3,8 @@ import bcrypt from 'bcryptjs';
 import { signAuthToken, signRefreshToken, verifyRefreshToken } from '../auth.js';
 import { findMockAuthUser, isMockLoginMode } from '../data/mockAuthUsers.js';
 import pool from '../db.js';
+import { sendPasswordResetEmail } from '../email.js';
+import { validatePasswordPolicy } from '../passwordPolicy.js';
 import { logActividad, normalizeUserRole } from '../userSchema.js';
 
 const REFRESH_COOKIE = 'azami_rt';
@@ -72,6 +74,11 @@ export async function registerUsuario(req, res, next) {
 
     if (!acceptTerms || !acceptDataPolicy) {
       return res.status(400).json({ error: 'Debes aceptar términos y autorizar el tratamiento de datos para registrarte' });
+    }
+
+    const passwordValidationError = validatePasswordPolicy(password);
+    if (passwordValidationError) {
+      return res.status(400).json({ error: passwordValidationError });
     }
 
     const [existing] = await pool.query('SELECT id FROM usuarios WHERE email = ?', [email]);
@@ -312,8 +319,9 @@ export async function forgotPassword(req, res, next) {
       [user.id, tokenHash, expiraAt]
     );
 
-    const resetUrl = `http://localhost:5173/reset-password/${token}`;
-    console.log(`\n🔑 Enlace de restablecimiento para ${email}:\n   ${resetUrl}\n`);
+    const appUrl = String(process.env.FRONTEND_APP_URL || 'http://localhost:5173').trim().replace(/\/$/, '');
+    const resetUrl = `${appUrl}/reset-password/${token}`;
+    await sendPasswordResetEmail({ to: email, resetUrl });
 
     await logActividad({
       usuarioId: rows.length > 0 ? rows[0].id : null,
@@ -338,8 +346,9 @@ export async function resetPassword(req, res, next) {
       return res.status(400).json({ error: 'Token y nueva contraseña son obligatorios' });
     }
 
-    if (password.length < 6) {
-      return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
+    const passwordValidationError = validatePasswordPolicy(password);
+    if (passwordValidationError) {
+      return res.status(400).json({ error: passwordValidationError });
     }
 
     const tokenHash = crypto.createHash('sha256').update(token).digest('hex');

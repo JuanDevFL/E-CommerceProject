@@ -1,9 +1,58 @@
 import bcrypt from 'bcryptjs';
 import pool from '../db.js';
+import { sendOrderConfirmationEmail } from '../email.js';
+import { validatePasswordPolicy } from '../passwordPolicy.js';
+import { calculateShipping, STORE_CURRENCY, normalizePrice } from '../pricing.js';
 import { logActividad } from '../userSchema.js';
 
 function clientIp(req) {
   return (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress || null;
+}
+
+function normalizePaymentStatus(value) {
+  const status = String(value || 'approved').trim().toLowerCase();
+  return ['approved', 'pending', 'rejected'].includes(status) ? status : 'approved';
+}
+
+function resolveOrderState(paymentStatus) {
+  if (paymentStatus === 'pending') return 'pendiente';
+  if (paymentStatus === 'rejected') return 'cancelado';
+  return 'confirmado';
+}
+
+function buildAddressSnapshot(address) {
+  return {
+    id: address.id,
+    alias: address.alias,
+    nombre_receptor: address.nombre_receptor,
+    telefono: address.telefono,
+    calle: address.calle,
+    ciudad: address.ciudad,
+    estado: address.estado,
+    codigo_postal: address.codigo_postal,
+    pais: address.pais,
+  };
+}
+
+function sanitizeOrderItems(rawItems) {
+  if (!Array.isArray(rawItems)) {
+    return [];
+  }
+
+  const grouped = new Map();
+
+  for (const rawItem of rawItems) {
+    const productId = Number(rawItem?.productId);
+    const quantity = Number(rawItem?.quantity);
+
+    if (!Number.isInteger(productId) || productId <= 0 || !Number.isInteger(quantity) || quantity <= 0) {
+      continue;
+    }
+
+    grouped.set(productId, (grouped.get(productId) || 0) + quantity);
+  }
+
+  return [...grouped.entries()].map(([productId, quantity]) => ({ productId, quantity }));
 }
 
 // ─── Perfil ──────────────────────────────────────────────────────────────────
@@ -61,8 +110,10 @@ export async function changePassword(req, res) {
     if (!current || !newPassword) {
       return res.status(400).json({ error: 'Contraseña actual y nueva son obligatorias' });
     }
-    if (newPassword.length < 8) {
-      return res.status(400).json({ error: 'La nueva contraseña debe tener al menos 8 caracteres' });
+
+    const passwordValidationError = validatePasswordPolicy(newPassword);
+    if (passwordValidationError) {
+      return res.status(400).json({ error: passwordValidationError });
     }
 
     const [rows] = await pool.query('SELECT password FROM usuarios WHERE id = ? LIMIT 1', [req.user.id]);
@@ -95,7 +146,11 @@ export async function changePassword(req, res) {
 export async function getMyOrders(req, res) {
   try {
     const [orders] = await pool.query(
-      'SELECT id, total, estado, creado_at FROM ordenes WHERE usuario_id = ? ORDER BY creado_at DESC',
+      `SELECT id, subtotal, envio, total, moneda, estado, referencia_pago,
+              payment_provider, payment_method, payment_status, direccion_envio_json, creado_at
+       FROM ordenes
+       WHERE usuario_id = ?
+       ORDER BY creado_at DESC`,
       [req.user.id]
     );
 
@@ -119,9 +174,176 @@ export async function getMyOrders(req, res) {
       itemsByOrder[item.orden_id].push(item);
     }
 
-    res.json(orders.map((o) => ({ ...o, items: itemsByOrder[o.id] || [] })));
+    res.json(orders.map((order) => ({
+      ...order,
+      direccion_envio: order.direccion_envio_json ? JSON.parse(order.direccion_envio_json) : null,
+      items: itemsByOrder[order.id] || [],
+    })));
   } catch {
     res.status(500).json({ error: 'Error al obtener pedidos' });
+  }
+}
+
+export async function createMyOrder(req, res) {
+  const items = sanitizeOrderItems(req.body.items);
+  const addressId = Number(req.body.addressId);
+  const reference = String(req.body.reference || '').trim().slice(0, 80);
+  const paymentProvider = String(req.body.paymentProvider || 'mock_local').trim().slice(0, 40) || 'mock_local';
+  const paymentMethod = String(req.body.paymentMethod || 'sandbox_local').trim().slice(0, 40) || 'sandbox_local';
+  const paymentStatus = normalizePaymentStatus(req.body.paymentStatus);
+
+  if (!items.length) {
+    return res.status(400).json({ error: 'El pedido debe incluir al menos un producto válido.' });
+  }
+
+  if (!Number.isInteger(addressId) || addressId <= 0) {
+    return res.status(400).json({ error: 'Debes seleccionar una dirección de envío válida.' });
+  }
+
+  if (!reference) {
+    return res.status(400).json({ error: 'La referencia del pago es obligatoria.' });
+  }
+
+  let connection;
+
+  try {
+    const [addressRows] = await pool.query(
+      'SELECT * FROM direcciones_envio WHERE id = ? AND usuario_id = ? LIMIT 1',
+      [addressId, req.user.id]
+    );
+
+    if (!addressRows.length) {
+      return res.status(404).json({ error: 'La dirección seleccionada no existe.' });
+    }
+
+    const [existingReference] = await pool.query(
+      'SELECT id FROM ordenes WHERE referencia_pago = ? LIMIT 1',
+      [reference]
+    );
+
+    if (existingReference.length > 0) {
+      return res.status(409).json({ error: 'La referencia del pedido ya existe. Recarga el checkout e intenta otra vez.' });
+    }
+
+    const productIds = items.map((item) => item.productId);
+    const placeholders = productIds.map(() => '?').join(',');
+    const [productRows] = await pool.query(
+      `SELECT id, nombre, precio, stock FROM productos WHERE id IN (${placeholders})`,
+      productIds
+    );
+
+    if (productRows.length !== productIds.length) {
+      return res.status(400).json({ error: 'Uno o más productos del carrito ya no existen en la base de datos.' });
+    }
+
+    const productsById = new Map(productRows.map((row) => [row.id, row]));
+    const orderItems = [];
+
+    for (const item of items) {
+      const product = productsById.get(item.productId);
+
+      if (!product) {
+        return res.status(400).json({ error: 'No se pudo validar uno de los productos del pedido.' });
+      }
+
+      if (Number(product.stock || 0) < item.quantity) {
+        return res.status(400).json({ error: `No hay stock suficiente para ${product.nombre}.` });
+      }
+
+      orderItems.push({
+        productId: product.id,
+        nombre: product.nombre,
+        quantity: item.quantity,
+        unitPrice: normalizePrice(product.precio),
+      });
+    }
+
+    const subtotal = orderItems.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
+    const shipping = calculateShipping(subtotal);
+    const total = subtotal + shipping;
+    const orderState = resolveOrderState(paymentStatus);
+    const addressSnapshot = buildAddressSnapshot(addressRows[0]);
+
+    connection = await pool.getConnection();
+    await connection.beginTransaction();
+
+    const [result] = await connection.query(
+      `INSERT INTO ordenes
+         (usuario_id, cliente_tipo, cliente_nombre, cliente_email, cliente_telefono, subtotal, envio, total, moneda, estado, referencia_pago, payment_provider, payment_method, payment_status, direccion_envio_json)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        req.user.id,
+        'registered',
+        req.user.nombre || null,
+        req.user.email || null,
+        addressSnapshot.telefono || null,
+        subtotal.toFixed(2),
+        shipping.toFixed(2),
+        total.toFixed(2),
+        STORE_CURRENCY,
+        orderState,
+        reference,
+        paymentProvider,
+        paymentMethod,
+        paymentStatus,
+        JSON.stringify(addressSnapshot),
+      ]
+    );
+
+    for (const item of orderItems) {
+      await connection.query(
+        'INSERT INTO orden_items (orden_id, producto_id, cantidad, precio) VALUES (?, ?, ?, ?)',
+        [result.insertId, item.productId, item.quantity, item.unitPrice.toFixed(2)]
+      );
+    }
+
+    await connection.commit();
+
+    await logActividad({
+      usuarioId: req.user.id,
+      accion: 'crear_orden_prueba',
+      descripcion: `Pedido ${reference} registrado con estado ${paymentStatus}`,
+      ip: clientIp(req),
+      userAgent: req.headers['user-agent'] || null,
+    });
+
+    await sendOrderConfirmationEmail({
+      to: req.user.email,
+      customerName: req.user.nombre,
+      order: {
+        referencia_pago: reference,
+        total,
+        moneda: STORE_CURRENCY,
+        estado: orderState,
+        direccion_envio: addressSnapshot,
+        items: orderItems,
+      },
+    }).catch((error) => {
+      console.error('No se pudo enviar el correo de confirmación del pedido registrado:', error.message);
+    });
+
+    res.status(201).json({
+      id: result.insertId,
+      subtotal,
+      envio: shipping,
+      total,
+      moneda: STORE_CURRENCY,
+      estado: orderState,
+      referencia_pago: reference,
+      payment_provider: paymentProvider,
+      payment_method: paymentMethod,
+      payment_status: paymentStatus,
+      direccion_envio: addressSnapshot,
+      items: orderItems,
+      createdAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    if (connection) {
+      await connection.rollback();
+    }
+    res.status(500).json({ error: error.message || 'Error al crear el pedido.' });
+  } finally {
+    connection?.release();
   }
 }
 

@@ -22,7 +22,7 @@ function ConsentBanner({ onSave }) {
         <h2>Autorización de tratamiento de datos personales</h2>
         <p>
           Usamos cookies necesarias para la operación del sitio y, solo con tu autorización,
-          cookies de analítica o marketing. Puedes aceptar, rechazar las no esenciales o personalizar tu decisión.
+          cookies de analítica o mercadeo. Puedes aceptar, rechazar las no esenciales o personalizar tu decisión.
         </p>
       </div>
 
@@ -55,7 +55,7 @@ function ConsentBanner({ onSave }) {
               onChange={() => updatePreference('marketing')}
             />
             <span>
-              <strong>Marketing</strong>
+              <strong>Mercadeo</strong>
               <small>Personalización de contenidos y comunicaciones promocionales.</small>
             </span>
           </label>

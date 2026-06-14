@@ -1,14 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import logoNavBar from '../assets/LogoNavBar.svg';
-
-function formatPrice(value) {
-  return new Intl.NumberFormat('es-MX', {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: 0,
-  }).format(value);
-}
+import { formatPrice } from '../utils/pricing.js';
 
 function Icon({ type, className = 'nav-icon' }) {
   const commonProps = {
@@ -298,7 +291,7 @@ function Navbar({
           <button
             type="button"
             className="nav-icon-btn"
-            aria-label="Dashboard"
+            aria-label="Panel administrativo"
             onClick={() => {
               closeMenu();
               closeUserPanel();
@@ -307,7 +300,7 @@ function Navbar({
             }}
           >
             <Icon type="dashboard" />
-            <span className="nav-icon-tooltip">Dashboard</span>
+            <span className="nav-icon-tooltip">Panel admin</span>
           </button>
         )}
 
@@ -518,15 +511,10 @@ function Navbar({
                 className="btn-primary rounded-full px-6 py-3 text-sm font-semibold"
                 onClick={() => {
                   closeCart();
-                  if (!user) {
-                    onOpenAuth();
-                    return;
-                  }
-
                   onOpenCheckout?.();
                 }}
               >
-                {user ? 'Continuar compra' : 'Inicia sesión para continuar'}
+                {user ? 'Continuar compra' : 'Comprar como invitado'}
               </button>
             </div>
           </div>
@@ -569,7 +557,7 @@ function Navbar({
                   }}
                 >
                   <Icon type="menu" />
-                  Dashboard admin
+                  Panel admin
                 </button>
               )}
               {isAdmin && isAdminPage && (

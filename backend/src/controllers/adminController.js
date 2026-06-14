@@ -47,8 +47,11 @@ export async function getAdminDashboard(req, res, next) {
           o.total,
           o.estado,
           o.creado_at,
-          COALESCE(u.nombre, 'Cliente sin registro') AS cliente,
-          u.email AS cliente_email
+          COALESCE(u.nombre, o.cliente_nombre, 'Cliente sin registro') AS cliente,
+          COALESCE(u.email, o.cliente_email) AS cliente_email,
+          o.cliente_tipo,
+          o.payment_status,
+          o.referencia_pago
         FROM ordenes o
         LEFT JOIN usuarios u ON u.id = o.usuario_id
         ORDER BY o.creado_at DESC
@@ -195,9 +198,10 @@ export async function getOrderDetail(req, res, next) {
     }
 
     const [orderRows] = await pool.query(
-      `SELECT o.id, o.total, o.estado, o.creado_at,
-              COALESCE(u.nombre, 'Cliente sin registro') AS cliente,
-              u.email AS cliente_email
+      `SELECT o.id, o.subtotal, o.envio, o.total, o.estado, o.creado_at,
+              o.payment_status, o.referencia_pago, o.cliente_tipo, o.cliente_telefono, o.direccion_envio_json,
+              COALESCE(u.nombre, o.cliente_nombre, 'Cliente sin registro') AS cliente,
+              COALESCE(u.email, o.cliente_email) AS cliente_email
        FROM ordenes o
        LEFT JOIN usuarios u ON u.id = o.usuario_id
        WHERE o.id = ? LIMIT 1`,
@@ -217,7 +221,11 @@ export async function getOrderDetail(req, res, next) {
       [orderId]
     );
 
-    res.json({ ...orderRows[0], items });
+    res.json({
+      ...orderRows[0],
+      direccion_envio: orderRows[0].direccion_envio_json ? JSON.parse(orderRows[0].direccion_envio_json) : null,
+      items,
+    });
   } catch (error) {
     next(error);
   }

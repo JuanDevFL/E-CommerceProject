@@ -2,10 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import HeroCarousel from '../components/HeroCarousel.jsx';
 import { curatedProducts } from '../data/curatedProducts.js';
-
-function formatPrice(value) {
-  return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(value);
-}
+import { formatPrice } from '../utils/pricing.js';
 
 function FeaturedCarousel({ products }) {
   const featured = (products && products.length > 0 ? products : curatedProducts)

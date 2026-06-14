@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { createAdminProducto, fetchAdminDashboard, fetchOrderDetail, updateAdminProducto, updateUsuarioRol } from '../api.js';
+import { formatPrice as formatCurrency, normalizePrice } from '../utils/pricing.js';
 import './AdminDashboardPage.css';
 
 const initialProductForm = {
@@ -13,14 +14,6 @@ const initialProductForm = {
   material: '',
   etiqueta: '',
 };
-
-function formatCurrency(value) {
-  return new Intl.NumberFormat('es-MX', {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: 0,
-  }).format(Number(value || 0));
-}
 
 function formatInteger(value) {
   return new Intl.NumberFormat('es-MX', {
@@ -143,7 +136,7 @@ function AdminDashboardPage({ user, onProductCreated }) {
     setEditForm({
       nombre: product.nombre || '',
       descripcion: product.descripcion || '',
-      precio: String(product.precio || ''),
+      precio: String(normalizePrice(product.precio) || ''),
       imagen_url: product.imagen_url || '',
       stock: String(product.stock || '0'),
       categoria: product.categoria || '',
@@ -567,8 +560,8 @@ function AdminDashboardPage({ user, onProductCreated }) {
                     </label>
 
                     <label className="admin-field">
-                      <span>Precio</span>
-                      <input type="number" min="1" step="0.01" name="precio" value={productForm.precio} onChange={handleProductFieldChange} placeholder="180" required />
+                      <span>Precio (COP)</span>
+                      <input type="number" min="1000" step="1000" name="precio" value={productForm.precio} onChange={handleProductFieldChange} placeholder="1080000" required />
                     </label>
 
                     <label className="admin-field">
@@ -821,8 +814,8 @@ function AdminDashboardPage({ user, onProductCreated }) {
                     <textarea name="descripcion" value={editForm.descripcion} onChange={handleEditFieldChange} rows="3" />
                   </label>
                   <label className="admin-field">
-                    <span>Precio</span>
-                    <input type="number" min="1" step="0.01" name="precio" value={editForm.precio} onChange={handleEditFieldChange} required />
+                    <span>Precio (COP)</span>
+                    <input type="number" min="1000" step="1000" name="precio" value={editForm.precio} onChange={handleEditFieldChange} required />
                   </label>
                   <label className="admin-field">
                     <span>Stock</span>

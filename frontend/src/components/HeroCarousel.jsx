@@ -11,21 +11,21 @@ const slides = [
   {
     src: 'https://images.pexels.com/photos/23223842/pexels-photo-23223842.jpeg?auto=compress&cs=tinysrgb&w=1600',
     alt: 'Bolso rosa de cuero en una composición floral.',
-    eyebrow: 'Capsule Drop',
+    eyebrow: 'Selección cápsula',
     title: 'Color, textura y detalle artesanal.',
-    description: 'Imágenes gratuitas de Pexels usadas como placeholder editorial.'
+    description: 'Imágenes gratuitas de Pexels usadas como referencia editorial.'
   },
   {
     src: 'https://images.pexels.com/photos/7953286/pexels-photo-7953286.jpeg?auto=compress&cs=tinysrgb&w=1600',
     alt: 'Bolso negro y rojo sobre una composición geométrica.',
-    eyebrow: 'Studio Look',
+    eyebrow: 'Estilo de estudio',
     title: 'Contraste limpio para la colección.',
     description: 'El carrusel está preparado para reemplazarse luego por fotografía de marca.'
   },
   {
     src: 'https://images.pexels.com/photos/5706269/pexels-photo-5706269.jpeg?auto=compress&cs=tinysrgb&w=1600',
     alt: 'Bolsos pequeños de cuero en un set minimalista.',
-    eyebrow: 'Season Preview',
+    eyebrow: 'Avance de temporada',
     title: 'Silhuetas compactas y acabados suaves.',
     description: 'Mantiene proporciones responsivas y navegación manual o automática.'
   }
@@ -99,7 +99,7 @@ function HeroCarousel() {
       </div>
 
       <div className="carousel-footer">
-        <div className="carousel-dots" role="tablist" aria-label="Selector de slides">
+        <div className="carousel-dots" role="tablist" aria-label="Selector de imágenes">
           {slides.map((slide, index) => (
             <button
               key={slide.src}
@@ -114,7 +114,7 @@ function HeroCarousel() {
         </div>
 
         <p className="carousel-meta">
-          {String(activeIndex + 1).padStart(2, '0')} / {String(slides.length).padStart(2, '0')} · placeholders gratuitos vía Pexels
+          {String(activeIndex + 1).padStart(2, '0')} / {String(slides.length).padStart(2, '0')} · imágenes gratuitas vía Pexels
         </p>
       </div>
     </section>

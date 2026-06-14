@@ -1,15 +1,9 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { formatPrice } from '../utils/pricing.js';
+import { translateCategoryLabel, translateProductTagLabel } from '../utils/catalogLabels.js';
 
-function formatPrice(value) {
-  return new Intl.NumberFormat('es-MX', {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: 0
-  }).format(value);
-}
-
-function ProductCatalog({ products, notice, isLoading, wishlistIds = [], onAddToCart, onToggleWishlist }) {
+function ProductCatalog({ products, notice, isLoading, wishlistIds = [], onAddToCart, onBuyNow, onToggleWishlist }) {
   const [activeCategory, setActiveCategory] = useState('Todos');
   const [activeTone, setActiveTone] = useState('Todos');
   const [onlyAvailable, setOnlyAvailable] = useState(true);
@@ -32,7 +26,7 @@ function ProductCatalog({ products, notice, isLoading, wishlistIds = [], onAddTo
           <p className="catalog-eyebrow">Selección Azami</p>
           <h2 className="catalog-title">Catálogo curado con filtros por estilo y tono</h2>
           <p className="catalog-description">
-            Empezamos con una selección editorial para que el storefront tenga producto realista desde ahora,
+            Empezamos con una selección editorial para que la tienda tenga producto realista desde ahora,
             mientras el catálogo en vivo sigue creciendo.
           </p>
         </div>
@@ -55,7 +49,7 @@ function ProductCatalog({ products, notice, isLoading, wishlistIds = [], onAddTo
                 className={`catalog-chip ${category === activeCategory ? 'is-active' : ''}`}
                 onClick={() => setActiveCategory(category)}
               >
-                {category}
+                {translateCategoryLabel(category)}
               </button>
             ))}
           </div>
@@ -118,8 +112,8 @@ function ProductCatalog({ products, notice, isLoading, wishlistIds = [], onAddTo
                   <img src={product.imagen_url} alt={product.nombre} className="product-card-image" loading="lazy" decoding="async" referrerPolicy="no-referrer" />
                 </Link>
                 <div className="product-card-badges">
-                  <span className="product-badge product-badge-primary">{product.etiqueta}</span>
-                  <span className="product-badge">{product.categoria}</span>
+                  <span className="product-badge product-badge-primary">{translateProductTagLabel(product.etiqueta)}</span>
+                  <span className="product-badge">{translateCategoryLabel(product.categoria)}</span>
                 </div>
                 <button
                   type="button"
@@ -152,14 +146,24 @@ function ProductCatalog({ products, notice, isLoading, wishlistIds = [], onAddTo
                   <span className={`product-card-stock ${product.stock === 0 ? 'is-empty' : ''}`}>
                     {product.stock > 0 ? `${product.stock} disponibles` : 'Próximamente'}
                   </span>
-                  <button
-                    type="button"
-                    className="btn-primary rounded-full px-5 py-3 text-sm font-semibold"
-                    onClick={() => onAddToCart(product)}
-                    disabled={product.stock === 0}
-                  >
-                    {product.stock > 0 ? 'Agregar al carrito' : 'Sin stock'}
-                  </button>
+                  <div className="product-card-actions">
+                    <button
+                      type="button"
+                      className="btn-secondary rounded-full px-5 py-3 text-sm font-semibold"
+                      onClick={() => onAddToCart(product)}
+                      disabled={product.stock === 0}
+                    >
+                      {product.stock > 0 ? 'Agregar al carrito' : 'Agotado'}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-primary rounded-full px-5 py-3 text-sm font-semibold"
+                      onClick={() => onBuyNow?.(product)}
+                      disabled={product.stock === 0}
+                    >
+                      Comprar ahora
+                    </button>
+                  </div>
                 </div>
               </div>
             </article>
