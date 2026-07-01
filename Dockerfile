@@ -1,13 +1,16 @@
 FROM node:20-alpine
 
+ENV NODE_ENV=production
+
 WORKDIR /app/backend
 
-COPY backend/package*.json ./
-RUN npm install
+# Instalación reproducible a partir del lockfile versionado
+COPY backend/package.json backend/package-lock.json ./
+RUN npm ci --omit=dev
 
 COPY backend/. ./
 
-ENV NODE_ENV=production
+# Railway inyecta su propio $PORT; el servidor lo lee con process.env.PORT
 EXPOSE 5000
 
 CMD ["npm", "start"]
