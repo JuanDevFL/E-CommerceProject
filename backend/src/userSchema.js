@@ -19,7 +19,7 @@ export async function ensureUsuariosTable() {
     )
   `);
 
-  const databaseName = process.env.DB_NAME || 'ecommerce_db';
+  const databaseName = process.env.DB_NAME || process.env.MYSQLDATABASE || 'ecommerce_db';
   const [rows] = await pool.query(
     `SELECT COLUMN_NAME
      FROM INFORMATION_SCHEMA.COLUMNS
@@ -162,7 +162,7 @@ export async function ensureOrdersTable() {
     )
   `);
 
-  const databaseName = process.env.DB_NAME || 'ecommerce_db';
+  const databaseName = process.env.DB_NAME || process.env.MYSQLDATABASE || 'ecommerce_db';
   const [rows] = await pool.query(
     `SELECT COLUMN_NAME, IS_NULLABLE
      FROM INFORMATION_SCHEMA.COLUMNS

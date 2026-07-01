@@ -4,7 +4,7 @@ import { seedProducts } from '../data/seedProducts.js';
 
 dotenv.config();
 
-const databaseName = process.env.DB_NAME || 'ecommerce_db';
+const databaseName = process.env.DB_NAME || process.env.MYSQLDATABASE || 'ecommerce_db';
 
 const productColumns = [
   {
