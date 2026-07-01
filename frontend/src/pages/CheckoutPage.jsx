@@ -6,6 +6,7 @@ import './CheckoutPage.css';
 
 const WOMPI_CONTEXT_KEY_PREFIX = 'azami-wompi-context:';
 const WOMPI_SYNC_KEY_PREFIX = 'azami-wompi-sync:';
+const WOMPI_PENDING_KEY_PREFIX = 'azami-wompi-pending:';
 
 function wompiContextKey(reference) {
   return `${WOMPI_CONTEXT_KEY_PREFIX}${reference}`;
@@ -13,6 +14,10 @@ function wompiContextKey(reference) {
 
 function wompiSyncKey(transactionId) {
   return `${WOMPI_SYNC_KEY_PREFIX}${transactionId}`;
+}
+
+function wompiPendingKey(reference) {
+  return `${WOMPI_PENDING_KEY_PREFIX}${reference}`;
 }
 
 function saveWompiContext(reference, context) {
@@ -85,6 +90,16 @@ function markWompiSynced(transactionId) {
   window.sessionStorage.setItem(wompiSyncKey(transactionId), '1');
 }
 
+function isWompiPendingPrepared(reference) {
+  if (typeof window === 'undefined' || !reference) return false;
+  return window.sessionStorage.getItem(wompiPendingKey(reference)) === '1';
+}
+
+function markWompiPendingPrepared(reference) {
+  if (typeof window === 'undefined' || !reference) return;
+  window.sessionStorage.setItem(wompiPendingKey(reference), '1');
+}
+
 const initialGuestForm = {
   nombre: '',
   email: '',
@@ -149,6 +164,21 @@ function toWompiCountryCode(country) {
   return normalized.slice(0, 2);
 }
 
+function formatOrderStatusLabel(status) {
+  const normalized = String(status || '').trim().toLowerCase();
+
+  if (normalized === 'pago_confirmado' || normalized === 'confirmado' || normalized === 'pagado') {
+    return 'Pago confirmado';
+  }
+
+  if (normalized === 'pendiente') return 'Pendiente';
+  if (normalized === 'enviado') return 'Enviado';
+  if (normalized === 'entregado') return 'Entregado';
+  if (normalized === 'cancelado') return 'Cancelado';
+
+  return status || 'Registrado';
+}
+
 function WompiSandboxTestGuide() {
   return (
     <div className="checkout-sandbox-guide" role="note" aria-label="Datos de prueba Wompi Sandbox">
@@ -161,6 +191,7 @@ function WompiSandboxTestGuide() {
           <ul>
             <li>4242 4242 4242 4242: APPROVED</li>
             <li>4111 1111 1111 1111: DECLINED</li>
+            <li>Cualquier otra tarjeta: ERROR</li>
             <li>Fecha futura y CVC de 3 digitos</li>
           </ul>
         </div>
@@ -170,6 +201,7 @@ function WompiSandboxTestGuide() {
           <ul>
             <li>3991111111: APPROVED</li>
             <li>3992222222: DECLINED</li>
+            <li>Otro numero: ERROR</li>
           </ul>
         </div>
 
@@ -180,12 +212,61 @@ function WompiSandboxTestGuide() {
             <li>Banco que rechaza: DECLINED</li>
           </ul>
         </div>
+
+        <div>
+          <strong>Boton Bancolombia</strong>
+          <ul>
+            <li>En la redireccion eliges el estado final</li>
+            <li>APPROVED / DECLINED</li>
+          </ul>
+        </div>
+
+        <div>
+          <strong>Bancolombia QR</strong>
+          <ul>
+            <li>En el widget eliges el estado final</li>
+            <li>APROBADA / DECLINADA / ERROR</li>
+          </ul>
+        </div>
+
+        <div>
+          <strong>Daviplata</strong>
+          <ul>
+            <li>OTP 574829: APPROVED</li>
+            <li>OTP 932015: DECLINED</li>
+            <li>OTP 999999: ERROR</li>
+          </ul>
+        </div>
+
+        <div>
+          <strong>Puntos Colombia</strong>
+          <ul>
+            <li>En el widget eliges el estado final</li>
+            <li>Pago total o 50% con puntos</li>
+          </ul>
+        </div>
+
+        <div>
+          <strong>BNPL Bancolombia</strong>
+          <ul>
+            <li>En la redireccion eliges el estado final</li>
+            <li>APPROVED / DECLINED / ERROR</li>
+          </ul>
+        </div>
+
+        <div>
+          <strong>Su+ Pay</strong>
+          <ul>
+            <li>En la redireccion eliges el estado final</li>
+            <li>APPROVED / DECLINED / ERROR</li>
+          </ul>
+        </div>
       </div>
     </div>
   );
 }
 
-function WompiSandboxWidget({ config, errorMessage, customerData, shippingAddress }) {
+function WompiSandboxWidget({ config, errorMessage, customerData, shippingAddress, onBeforeOpen, isPreparing }) {
   const amountInCents = Number(config?.amountInCents || 0);
   const reference = config?.reference || '';
   const currency = config?.currency || STORE_CURRENCY;
@@ -248,10 +329,23 @@ function WompiSandboxWidget({ config, errorMessage, customerData, shippingAddres
 
   const checkoutUrl = `https://checkout.wompi.co/p/?${params.toString()}`;
 
+  async function handleOpenCheckout() {
+    if (typeof onBeforeOpen === 'function') {
+      const ready = await onBeforeOpen();
+      if (!ready) {
+        return;
+      }
+    }
+
+    if (typeof window !== 'undefined') {
+      window.location.assign(checkoutUrl);
+    }
+  }
+
   return (
-    <a href={checkoutUrl} className="checkout-btn" target="_self" rel="noreferrer">
-      Paga con <strong>Wompi</strong>
-    </a>
+    <button type="button" className="checkout-btn" onClick={handleOpenCheckout} disabled={Boolean(isPreparing)}>
+      {isPreparing ? 'Preparando pago con Wompi...' : <>Paga con <strong>Wompi</strong></>}
+    </button>
   );
 }
 
@@ -265,6 +359,7 @@ export default function CheckoutPage({ user, cartItems, onBackToCatalog, onOrder
   const [createdOrder, setCreatedOrder] = useState(null);
   const [wompiWidgetConfig, setWompiWidgetConfig] = useState(null);
   const [wompiWidgetError, setWompiWidgetError] = useState('');
+  const [isPreparingWompiOrder, setIsPreparingWompiOrder] = useState(false);
   const [wompiReturn, setWompiReturn] = useState(null);
   const wompiSyncStartedRef = useRef(false);
   const [guestForm, setGuestForm] = useState(() => ({
@@ -524,7 +619,25 @@ export default function CheckoutPage({ user, cartItems, onBackToCatalog, onOrder
       setCheckoutError('');
 
       try {
-        const transaction = await fetchWompiTransaction(wompiReturnTransactionId);
+        let transaction = await fetchWompiTransaction(wompiReturnTransactionId);
+
+        // Métodos asíncronos (Bancolombia Transfer/QR, BNPL, Su+ Pay) pueden
+        // volver momentáneamente en estado pendiente tras el redirect. Reintentamos
+        // unas cuantas veces antes de decidir el resultado final.
+        for (let attempt = 0; attempt < 5 && transaction.status === 'pending'; attempt += 1) {
+          await new Promise((resolve) => { setTimeout(resolve, 2500); });
+          transaction = await fetchWompiTransaction(wompiReturnTransactionId);
+        }
+
+        if (transaction.status === 'pending') {
+          setWompiReturn({
+            status: 'pending',
+            transactionId: wompiReturnTransactionId,
+            transaction,
+            message: 'Tu pago está siendo procesado por Wompi. Te avisaremos cuando se confirme.',
+          });
+          return;
+        }
 
         if (transaction.status !== 'approved') {
           setWompiReturn({
@@ -688,6 +801,93 @@ export default function CheckoutPage({ user, cartItems, onBackToCatalog, onOrder
     }
   }
 
+  async function handleBeforeWompiCheckout() {
+    if (!wompiWidgetConfig?.reference) {
+      setCheckoutError('No pudimos preparar la referencia de Wompi. Intenta recargar el checkout.');
+      return false;
+    }
+
+    if (isPreparingWompiOrder) {
+      return false;
+    }
+
+    if (user && !selectedAddressId) {
+      setCheckoutError('Selecciona una dirección antes de continuar con Wompi.');
+      return false;
+    }
+
+    if (!user && !guestFieldsCompleted) {
+      setCheckoutError('Completa tus datos, dirección y autorizaciones antes de continuar con Wompi.');
+      return false;
+    }
+
+    if (hasUnsupportedItems) {
+      setCheckoutError('Hay productos sin ID de base de datos. Usa el catálogo conectado para pagar con Wompi.');
+      return false;
+    }
+
+    if (isWompiPendingPrepared(wompiWidgetConfig.reference)) {
+      return true;
+    }
+
+    setIsPreparingWompiOrder(true);
+    setCheckoutError('');
+
+    try {
+      const basePayload = {
+        reference: wompiWidgetConfig.reference,
+        paymentProvider: 'wompi',
+        paymentMethod: 'wompi_widget',
+        paymentStatus: 'pending',
+        items: persistableItems.map((item) => ({
+          productId: item.productId,
+          quantity: item.quantity,
+        })),
+      };
+
+      if (user) {
+        await createMyOrder({
+          ...basePayload,
+          addressId: Number(selectedAddressId),
+        });
+      } else {
+        await createGuestOrder({
+          ...basePayload,
+          customer: {
+            nombre: guestForm.nombre,
+            email: guestForm.email,
+            telefono: guestForm.telefono,
+          },
+          address: {
+            alias: guestForm.alias,
+            nombre_receptor: guestForm.nombre_receptor,
+            telefono: guestForm.telefono,
+            calle: guestForm.calle,
+            ciudad: guestForm.ciudad,
+            estado: guestForm.estado,
+            codigo_postal: guestForm.codigo_postal,
+            pais: guestForm.pais,
+          },
+        });
+      }
+
+      markWompiPendingPrepared(wompiWidgetConfig.reference);
+      return true;
+    } catch (error) {
+      const message = String(error?.message || '').toLowerCase();
+
+      if (message.includes('ya existe')) {
+        markWompiPendingPrepared(wompiWidgetConfig.reference);
+        return true;
+      }
+
+      setCheckoutError(error.message || 'No se pudo preparar la orden en estado pendiente antes de abrir Wompi.');
+      return false;
+    } finally {
+      setIsPreparingWompiOrder(false);
+    }
+  }
+
   if (wompiReturn) {
     const returnTx = wompiReturn.transaction;
     const returnOrder = wompiReturn.order || createdOrder;
@@ -699,6 +899,7 @@ export default function CheckoutPage({ user, cartItems, onBackToCatalog, onOrder
         : null;
     const isSyncing = wompiReturn.status === 'syncing';
     const isError = wompiReturn.status === 'error';
+    const isPending = wompiReturn.status === 'pending';
     const isSuccess = wompiReturn.status === 'success' || wompiReturn.status === 'already';
 
     return (
@@ -706,25 +907,29 @@ export default function CheckoutPage({ user, cartItems, onBackToCatalog, onOrder
         <div className="checkout-shell">
           <section className="checkout-success-card checkout-card">
             <p className="checkout-kicker">
-              {isSyncing ? 'Procesando pago' : isError ? 'Pago sin confirmar' : 'Pago aprobado'}
+              {isSyncing ? 'Procesando pago' : isError ? 'Pago sin confirmar' : isPending ? 'Pago en proceso' : 'Pago aprobado'}
             </p>
             <h1 className="checkout-title">
               {isSyncing
                 ? 'Estamos confirmando tu pago con Wompi'
                 : isError
                   ? 'No pudimos confirmar tu pago'
-                  : wompiReturn.status === 'already'
-                    ? 'Tu pago ya estaba registrado'
-                    : '¡Gracias! Tu pago fue aprobado'}
+                  : isPending
+                    ? 'Tu pago está siendo procesado'
+                    : wompiReturn.status === 'already'
+                      ? 'Tu pago ya estaba registrado'
+                      : '¡Gracias! Tu pago fue aprobado'}
             </h1>
             <p className="checkout-subtitle">
               {isSyncing
                 ? 'Validando la transacción de Wompi y guardando tu orden en nuestra base de datos...'
                 : isError
                   ? (wompiReturn.message || 'Ocurrió un problema al sincronizar el pago.')
-                  : wompiReturn.status === 'already'
-                    ? 'Ya teníamos registrada esta compra, así que no la duplicamos. Puedes consultar el detalle cuando quieras.'
-                    : 'Confirmamos tu pago con Wompi y registramos tu pedido correctamente.'}
+                  : isPending
+                    ? (wompiReturn.message || 'Tu pago está siendo procesado por Wompi. Te avisaremos cuando se confirme.')
+                    : wompiReturn.status === 'already'
+                      ? 'Ya teníamos registrada esta compra, así que no la duplicamos. Puedes consultar el detalle cuando quieras.'
+                      : 'Confirmamos tu pago con Wompi y registramos tu pedido correctamente.'}
             </p>
 
             {isSyncing ? (
@@ -747,7 +952,7 @@ export default function CheckoutPage({ user, cartItems, onBackToCatalog, onOrder
                   <div>
                     <span className="checkout-muted">Pedido</span>
                     <strong>#{returnOrder.id ?? returnOrder.orden_id ?? returnReference}</strong>
-                    <p className="checkout-footnote">{returnOrder.estado ? `Estado: ${returnOrder.estado}` : 'Registrado en tu cuenta'}</p>
+                    <p className="checkout-footnote">{returnOrder.estado ? `Estado: ${formatOrderStatusLabel(returnOrder.estado)}` : 'Registrado en tu cuenta'}</p>
                   </div>
                 ) : null}
               </div>
@@ -795,7 +1000,7 @@ export default function CheckoutPage({ user, cartItems, onBackToCatalog, onOrder
               <div>
                 <span className="checkout-muted">Total</span>
                 <strong>{formatPrice(createdOrder.total)}</strong>
-                <p className="checkout-footnote">Estado: {createdOrder.estado}</p>
+                <p className="checkout-footnote">Estado: {formatOrderStatusLabel(createdOrder.estado)}</p>
               </div>
             </div>
 
@@ -996,6 +1201,8 @@ export default function CheckoutPage({ user, cartItems, onBackToCatalog, onOrder
                   errorMessage={wompiPrereqMessage || wompiWidgetError}
                   customerData={wompiCustomerData}
                   shippingAddress={wompiShippingAddress}
+                  onBeforeOpen={handleBeforeWompiCheckout}
+                  isPreparing={isPreparingWompiOrder}
                 />
 
                 <WompiSandboxTestGuide />

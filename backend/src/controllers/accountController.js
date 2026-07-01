@@ -17,7 +17,24 @@ function normalizePaymentStatus(value) {
 function resolveOrderState(paymentStatus) {
   if (paymentStatus === 'pending') return 'pendiente';
   if (paymentStatus === 'rejected') return 'cancelado';
-  return 'confirmado';
+  return 'pago_confirmado';
+}
+
+async function updateOrderByReference({ reference, paymentProvider, paymentMethod, paymentStatus }) {
+  const [result] = await pool.query(
+    `UPDATE ordenes
+       SET payment_provider = ?, payment_method = ?, payment_status = ?, estado = ?
+     WHERE referencia_pago = ?`,
+    [
+      paymentProvider,
+      paymentMethod,
+      paymentStatus,
+      resolveOrderState(paymentStatus),
+      reference,
+    ]
+  );
+
+  return result.affectedRows > 0;
 }
 
 function buildAddressSnapshot(address) {
@@ -217,12 +234,39 @@ export async function createMyOrder(req, res) {
     }
 
     const [existingReference] = await pool.query(
-      'SELECT id FROM ordenes WHERE referencia_pago = ? LIMIT 1',
+      'SELECT id, payment_provider, payment_status FROM ordenes WHERE referencia_pago = ? LIMIT 1',
       [reference]
     );
 
     if (existingReference.length > 0) {
-      return res.status(409).json({ error: 'La referencia del pedido ya existe. Recarga el checkout e intenta otra vez.' });
+      const existing = existingReference[0];
+      const canUpdateSamePayment = String(existing.payment_provider || '').trim() === 'wompi'
+        && paymentProvider === 'wompi';
+
+      if (!canUpdateSamePayment) {
+        return res.status(409).json({ error: 'La referencia del pedido ya existe. Recarga el checkout e intenta otra vez.' });
+      }
+
+      const updated = await updateOrderByReference({
+        reference,
+        paymentProvider,
+        paymentMethod,
+        paymentStatus,
+      });
+
+      if (!updated) {
+        return res.status(409).json({ error: 'La referencia del pedido ya existe. Recarga el checkout e intenta otra vez.' });
+      }
+
+      return res.status(200).json({
+        id: existing.id,
+        referencia_pago: reference,
+        payment_provider: paymentProvider,
+        payment_method: paymentMethod,
+        payment_status: paymentStatus,
+        estado: resolveOrderState(paymentStatus),
+        updated: true,
+      });
     }
 
     const productIds = items.map((item) => item.productId);

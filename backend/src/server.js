@@ -8,9 +8,10 @@ import checkoutRoutes from './routes/checkoutRoutes.js';
 import { requestLogger } from './middleware/requestLogger.js';
 import accountRoutes from './routes/accountRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
+import announcementRoutes from './routes/announcementRoutes.js';
 import productRoutes from './routes/productRoutes.js';
 import userRoutes from './routes/userRoutes.js';
-import { ensureActividadLogsTable, ensureAddressesTable, ensureOrdersTable, ensurePasswordResetTokensTable, ensureRefreshTokensTable, ensureUsuariosTable } from './userSchema.js';
+import { ensureActividadLogsTable, ensureAddressesTable, ensureAnnouncementsTable, ensureOrdersTable, ensurePasswordResetTokensTable, ensureRefreshTokensTable, ensureUsuariosTable } from './userSchema.js';
 
 dotenv.config();
 
@@ -57,6 +58,7 @@ app.use('/api/productos', productRoutes);
 app.use('/api/usuarios', userRoutes);
 app.use('/api/checkout', checkoutRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/anuncios', announcementRoutes);
 app.use('/api/cuenta', accountRoutes);
 
 app.use((err, req, res, next) => {
@@ -73,6 +75,7 @@ async function bootstrap() {
       await ensureRefreshTokensTable();
       await ensureOrdersTable();
       await ensureAddressesTable();
+      await ensureAnnouncementsTable();
     }
 
     app.listen(PORT, () => {

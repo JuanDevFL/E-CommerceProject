@@ -141,6 +141,12 @@ export async function fetchAdminDashboard() {
   });
 }
 
+export async function fetchActiveAnnouncements() {
+  return request('/anuncios/active', {
+    method: 'GET',
+  });
+}
+
 export async function createAdminProducto(payload) {
   return request('/productos', {
     method: 'POST',
@@ -169,6 +175,30 @@ export async function fetchOrderDetail(orderId) {
   return request(`/admin/orders/${orderId}`, {
     method: 'GET',
     auth: true,
+  });
+}
+
+export async function updateOrderStatus(orderId, estado) {
+  return request(`/admin/orders/${orderId}/status`, {
+    method: 'PATCH',
+    auth: true,
+    body: JSON.stringify({ estado }),
+  });
+}
+
+export async function createAdminAnnouncement(payload) {
+  return request('/admin/announcements', {
+    method: 'POST',
+    auth: true,
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateAdminAnnouncement(announcementId, payload) {
+  return request(`/admin/announcements/${announcementId}`, {
+    method: 'PUT',
+    auth: true,
+    body: JSON.stringify(payload),
   });
 }
 

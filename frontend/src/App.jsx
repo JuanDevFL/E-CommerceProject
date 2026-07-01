@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
-import { fetchProductos, logoutApi } from './api';
+import { fetchActiveAnnouncements, fetchProductos, logoutApi } from './api';
+import AnnouncementPopup from './components/AnnouncementPopup.jsx';
 import ConsentBanner from './components/ConsentBanner.jsx';
 import Navbar from './components/Navbar.jsx';
 import SiteFooter from './components/SiteFooter.jsx';
@@ -199,6 +200,9 @@ function App() {
     const storedConsent = getStoredConsent();
     return !storedConsent || storedConsent.version !== CONSENT_VERSION;
   });
+  const [announcements, setAnnouncements] = useState([]);
+  const [showAnnouncementPopup, setShowAnnouncementPopup] = useState(false);
+  const [announcementIndex, setAnnouncementIndex] = useState(0);
   const [pageTransition, setPageTransition] = useState(false);
   const prevPathRef = useRef(location.pathname);
 
@@ -214,6 +218,50 @@ function App() {
       return () => clearTimeout(timer);
     }
   }, [location.pathname]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadAnnouncements() {
+      try {
+        const data = await fetchActiveAnnouncements();
+
+        if (!isMounted) {
+          return;
+        }
+
+        const items = Array.isArray(data?.announcements) ? data.announcements.slice(0, 5) : [];
+        setAnnouncements(items);
+
+        if (items.length > 0 && !isAdminPage && !isAuthPage) {
+          setAnnouncementIndex(0);
+          setShowAnnouncementPopup(true);
+        }
+      } catch {
+        if (isMounted) {
+          setAnnouncements([]);
+        }
+      }
+    }
+
+    loadAnnouncements();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!showAnnouncementPopup || announcements.length <= 1) {
+      return undefined;
+    }
+
+    const timer = window.setInterval(() => {
+      setAnnouncementIndex((current) => (current + 1) % announcements.length);
+    }, 5000);
+
+    return () => window.clearInterval(timer);
+  }, [showAnnouncementPopup, announcements.length]);
 
   useEffect(() => {
     if (isAuthPage) {
@@ -506,6 +554,15 @@ function App() {
           <p className="cart-toast-title">Carrito actualizado</p>
           <p className="cart-toast-text">{cartNotice.text}</p>
         </div>
+      )}
+
+      {showAnnouncementPopup && !isAdminPage && !isAuthPage && announcements.length > 0 && (
+        <AnnouncementPopup
+          announcements={announcements}
+          currentIndex={announcementIndex}
+          onSelect={setAnnouncementIndex}
+          onClose={() => setShowAnnouncementPopup(false)}
+        />
       )}
 
       <Routes>

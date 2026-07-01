@@ -360,8 +360,8 @@
 
 .checkout-sandbox-grid {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 0.65rem;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 0.65rem 1rem;
 }
 
 .checkout-sandbox-grid strong {

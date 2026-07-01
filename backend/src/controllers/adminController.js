@@ -5,6 +5,30 @@ function toNumber(value) {
   return Number(value || 0);
 }
 
+function parseAddress(value) {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+}
+
+const ALLOWED_ORDER_STATES = ['pendiente', 'pago_confirmado', 'enviado', 'entregado', 'cancelado'];
+
+function normalizeOrderState(value) {
+  const normalized = String(value || '').trim().toLowerCase();
+
+  if (normalized === 'confirmado' || normalized === 'pagado' || normalized === 'pago confirmado') {
+    return 'pago_confirmado';
+  }
+
+  return normalized;
+}
+
 function normalizeDashboardUser(user) {
   return {
     ...user,
@@ -12,9 +36,17 @@ function normalizeDashboardUser(user) {
   };
 }
 
+function normalizeAnnouncementStatus(value) {
+  return String(value || '').trim().toLowerCase() === 'inactivo' ? 'inactivo' : 'activo';
+}
+
+function normalizeAnnouncementUrl(value) {
+  return String(value || '').trim();
+}
+
 export async function getAdminDashboard(req, res, next) {
   try {
-    const [salesResult, inventoryResult, userStatsResult, featuredResult, recentOrdersResult, categoriesResult, usersResult, productsResult] = await Promise.all([
+    const [salesResult, inventoryResult, userStatsResult, featuredResult, recentOrdersResult, categoriesResult, usersResult, productsResult, announcementsResult] = await Promise.all([
       pool.query(`
         SELECT
           COUNT(*) AS totalOrders,
@@ -36,9 +68,26 @@ export async function getAdminDashboard(req, res, next) {
         FROM usuarios
       `),
       pool.query(`
-        SELECT id, nombre, precio, stock, categoria, tono, material, etiqueta, imagen_url
-        FROM productos
-        ORDER BY stock DESC, precio DESC, id DESC
+        SELECT
+          p.id,
+          p.nombre,
+          p.precio,
+          p.stock,
+          p.categoria,
+          p.tono,
+          p.material,
+          p.etiqueta,
+          p.imagen_url,
+          COALESCE(SUM(CASE
+            WHEN o.payment_status = 'approved' OR o.estado IN ('pago_confirmado', 'confirmado', 'pagado', 'entregado')
+            THEN oi.cantidad
+            ELSE 0
+          END), 0) AS total_vendidas
+        FROM productos p
+        LEFT JOIN orden_items oi ON oi.producto_id = p.id
+        LEFT JOIN ordenes o ON o.id = oi.orden_id
+        GROUP BY p.id, p.nombre, p.precio, p.stock, p.categoria, p.tono, p.material, p.etiqueta, p.imagen_url
+        ORDER BY total_vendidas DESC, p.stock DESC, p.precio DESC, p.id DESC
         LIMIT 1
       `),
       pool.query(`
@@ -50,10 +99,18 @@ export async function getAdminDashboard(req, res, next) {
           COALESCE(u.nombre, o.cliente_nombre, 'Cliente sin registro') AS cliente,
           COALESCE(u.email, o.cliente_email) AS cliente_email,
           o.cliente_tipo,
+          o.cliente_telefono,
+          COALESCE(oi.total_productos, 0) AS total_productos,
           o.payment_status,
-          o.referencia_pago
+          o.referencia_pago,
+          o.direccion_envio_json
         FROM ordenes o
         LEFT JOIN usuarios u ON u.id = o.usuario_id
+        LEFT JOIN (
+          SELECT orden_id, SUM(cantidad) AS total_productos
+          FROM orden_items
+          GROUP BY orden_id
+        ) oi ON oi.orden_id = o.id
         ORDER BY o.creado_at DESC
       `),
       pool.query(`
@@ -76,6 +133,11 @@ export async function getAdminDashboard(req, res, next) {
         FROM productos
         ORDER BY creado_at DESC
       `),
+      pool.query(`
+        SELECT id, imagen_url, estado, creado_at, actualizado_at
+        FROM anuncios
+        ORDER BY id ASC
+      `),
     ]);
 
     const [salesRows] = salesResult;
@@ -86,6 +148,7 @@ export async function getAdminDashboard(req, res, next) {
     const [categories] = categoriesResult;
     const [users] = usersResult;
     const [products] = productsResult;
+    const [announcements] = announcementsResult;
 
     const salesSummary = salesRows[0] || {};
     const inventorySummary = inventoryRows[0] || {};
@@ -126,12 +189,101 @@ export async function getAdminDashboard(req, res, next) {
       currentAdmin: req.user,
       metrics,
       featuredProduct,
-      recentOrders,
+      recentOrders: recentOrders.map((order) => ({
+        ...order,
+        direccion_envio: parseAddress(order.direccion_envio_json),
+      })),
       categoryBreakdown: categories,
       users: users.map(normalizeDashboardUser),
       products,
+      announcements,
       alerts,
     });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getActiveAnnouncements(req, res, next) {
+  try {
+    const [rows] = await pool.query(
+      `SELECT id, imagen_url
+       FROM anuncios
+       WHERE estado = 'activo'
+       ORDER BY id ASC
+       LIMIT 5`
+    );
+
+    res.json({ announcements: rows });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function createAnnouncement(req, res, next) {
+  try {
+    const imagenUrl = normalizeAnnouncementUrl(req.body.imagen_url);
+    const estado = normalizeAnnouncementStatus(req.body.estado);
+
+    if (!imagenUrl) {
+      return res.status(400).json({ error: 'La URL de la imagen es obligatoria' });
+    }
+
+    const [countRows] = await pool.query('SELECT COUNT(*) AS total FROM anuncios');
+    const total = Number(countRows[0]?.total || 0);
+
+    if (total >= 5) {
+      return res.status(400).json({ error: 'Solo puedes registrar hasta 5 anuncios' });
+    }
+
+    const [result] = await pool.query(
+      'INSERT INTO anuncios (imagen_url, estado) VALUES (?, ?)',
+      [imagenUrl, estado]
+    );
+
+    const [rows] = await pool.query(
+      'SELECT id, imagen_url, estado, creado_at, actualizado_at FROM anuncios WHERE id = ? LIMIT 1',
+      [result.insertId]
+    );
+
+    res.status(201).json(rows[0]);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function updateAnnouncement(req, res, next) {
+  try {
+    const announcementId = Number(req.params.announcementId);
+
+    if (!Number.isInteger(announcementId) || announcementId <= 0) {
+      return res.status(400).json({ error: 'El identificador del anuncio no es válido' });
+    }
+
+    const imagenUrl = normalizeAnnouncementUrl(req.body.imagen_url);
+    const estado = normalizeAnnouncementStatus(req.body.estado);
+
+    if (!imagenUrl) {
+      return res.status(400).json({ error: 'La URL de la imagen es obligatoria' });
+    }
+
+    const [existingRows] = await pool.query('SELECT id FROM anuncios WHERE id = ? LIMIT 1', [announcementId]);
+
+    if (existingRows.length === 0) {
+      return res.status(404).json({ error: 'Anuncio no encontrado' });
+    }
+
+    await pool.query(
+      'UPDATE anuncios SET imagen_url = ?, estado = ? WHERE id = ?',
+      [imagenUrl, estado, announcementId]
+    );
+
+    const [rows] = await pool.query(
+      'SELECT id, imagen_url, estado, creado_at, actualizado_at FROM anuncios WHERE id = ? LIMIT 1',
+      [announcementId]
+    );
+
+    res.json(rows[0]);
   } catch (error) {
     next(error);
   }
@@ -226,6 +378,33 @@ export async function getOrderDetail(req, res, next) {
       direccion_envio: orderRows[0].direccion_envio_json ? JSON.parse(orderRows[0].direccion_envio_json) : null,
       items,
     });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function updateOrderStatus(req, res, next) {
+  try {
+    const orderId = Number(req.params.orderId);
+    const requestedState = normalizeOrderState(req.body.estado);
+
+    if (!Number.isInteger(orderId) || orderId <= 0) {
+      return res.status(400).json({ error: 'El identificador de la orden no es válido' });
+    }
+
+    if (!ALLOWED_ORDER_STATES.includes(requestedState)) {
+      return res.status(400).json({ error: 'El estado solicitado no es válido' });
+    }
+
+    const [rows] = await pool.query('SELECT id FROM ordenes WHERE id = ? LIMIT 1', [orderId]);
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Orden no encontrada' });
+    }
+
+    await pool.query('UPDATE ordenes SET estado = ? WHERE id = ?', [requestedState, orderId]);
+
+    res.json({ id: orderId, estado: requestedState });
   } catch (error) {
     next(error);
   }

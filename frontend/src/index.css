@@ -263,6 +263,88 @@ body {
   z-index: 100;
 }
 
+/* ── Popup announcements ── */
+.announcement-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: color-mix(in srgb, #000000 62%, transparent);
+  backdrop-filter: blur(5px);
+}
+
+.announcement-modal {
+  position: relative;
+  width: min(100%, 54rem);
+  border-radius: 1rem;
+  overflow: hidden;
+  background: var(--color-surface);
+  border: 1px solid color-mix(in srgb, var(--color-border) 75%, transparent);
+  box-shadow: 0 22px 58px rgba(0, 0, 0, 0.42);
+}
+
+.announcement-close {
+  position: absolute;
+  top: 0.55rem;
+  right: 0.55rem;
+  z-index: 2;
+  width: 2rem;
+  height: 2rem;
+  border: none;
+  border-radius: 9999px;
+  background: rgba(0, 0, 0, 0.62);
+  color: #ffffff;
+  font-size: 1.25rem;
+  cursor: pointer;
+}
+
+.announcement-media-wrap {
+  background: #070707;
+}
+
+.announcement-media {
+  width: 100%;
+  max-height: 68vh;
+  display: block;
+  object-fit: cover;
+}
+
+.announcement-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  padding: 0.65rem 0.9rem;
+  color: var(--color-text);
+}
+
+.announcement-footer p {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--color-muted);
+}
+
+.announcement-dots {
+  display: flex;
+  gap: 0.45rem;
+}
+
+.announcement-dot {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 9999px;
+  border: none;
+  background: color-mix(in srgb, var(--color-border) 70%, transparent);
+  cursor: pointer;
+}
+
+.announcement-dot.is-active {
+  background: var(--color-primary);
+}
+
 .nav-icon-btn:hover .nav-icon-tooltip {
   opacity: 1;
   transform: translateX(-50%) translateY(0);

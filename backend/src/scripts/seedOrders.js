@@ -16,7 +16,7 @@ async function seedOrders() {
     process.exit(1);
   }
 
-  const estados = ['pendiente', 'pagado', 'enviado', 'entregado'];
+  const estados = ['pendiente', 'pago_confirmado', 'enviado', 'entregado'];
 
   let ordenesCreadas = 0;
 

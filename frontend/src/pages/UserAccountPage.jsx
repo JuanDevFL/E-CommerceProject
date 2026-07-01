@@ -26,7 +26,9 @@ function formatDate(dateStr) {
 function StatusBadge({ estado }) {
   const map = {
     pendiente: { label: 'Pendiente', cls: 'status-pending' },
-    confirmado: { label: 'Confirmado', cls: 'status-confirmed' },
+    pago_confirmado: { label: 'Pago confirmado', cls: 'status-confirmed' },
+    confirmado: { label: 'Pago confirmado', cls: 'status-confirmed' },
+    pagado: { label: 'Pago confirmado', cls: 'status-confirmed' },
     enviado: { label: 'Enviado', cls: 'status-shipped' },
     entregado: { label: 'Entregado', cls: 'status-delivered' },
     cancelado: { label: 'Cancelado', cls: 'status-cancelled' },
@@ -95,6 +97,10 @@ function SectionLoader() {
 function TabResumen({ user, orders, wishlistIds, cartItems, ordersLoading }) {
   const recent = orders.slice(0, 3);
   const memberSince = user?.creado_at ? formatDate(user.creado_at) : null;
+  const inProcessCount = orders.filter((order) => {
+    const status = String(order.estado || '').trim().toLowerCase();
+    return ['pendiente', 'pago_confirmado', 'confirmado', 'pagado'].includes(status);
+  }).length;
 
   return (
     <div className="acct-tab-content">
@@ -116,7 +122,7 @@ function TabResumen({ user, orders, wishlistIds, cartItems, ordersLoading }) {
           <span className="acct-stat-label">Pedidos totales</span>
         </div>
         <div className="acct-stat-card">
-          <span className="acct-stat-value">{ordersLoading ? '…' : orders.filter(o => o.estado === 'pendiente' || o.estado === 'confirmado').length}</span>
+          <span className="acct-stat-value">{ordersLoading ? '…' : inProcessCount}</span>
           <span className="acct-stat-label">En proceso</span>
         </div>
         <div className="acct-stat-card">

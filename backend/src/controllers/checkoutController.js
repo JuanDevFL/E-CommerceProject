@@ -30,7 +30,24 @@ function normalizeWompiTransactionStatus(value) {
 function resolveOrderState(paymentStatus) {
   if (paymentStatus === 'pending') return 'pendiente';
   if (paymentStatus === 'rejected') return 'cancelado';
-  return 'confirmado';
+  return 'pago_confirmado';
+}
+
+async function updateOrderByReference({ reference, paymentProvider, paymentMethod, paymentStatus }) {
+  const [result] = await pool.query(
+    `UPDATE ordenes
+       SET payment_provider = ?, payment_method = ?, payment_status = ?, estado = ?
+     WHERE referencia_pago = ?`,
+    [
+      paymentProvider,
+      paymentMethod,
+      paymentStatus,
+      resolveOrderState(paymentStatus),
+      reference,
+    ]
+  );
+
+  return result.affectedRows > 0;
 }
 
 function sanitizeOrderItems(rawItems) {
@@ -176,12 +193,39 @@ export async function createGuestOrder(req, res) {
 
   try {
     const [existingReference] = await pool.query(
-      'SELECT id FROM ordenes WHERE referencia_pago = ? LIMIT 1',
+      'SELECT id, payment_provider, payment_status FROM ordenes WHERE referencia_pago = ? LIMIT 1',
       [reference]
     );
 
     if (existingReference.length > 0) {
-      return res.status(409).json({ error: 'La referencia del pedido ya existe. Recarga el checkout e intenta otra vez.' });
+      const existing = existingReference[0];
+      const canUpdateSamePayment = String(existing.payment_provider || '').trim() === 'wompi'
+        && paymentProvider === 'wompi';
+
+      if (!canUpdateSamePayment) {
+        return res.status(409).json({ error: 'La referencia del pedido ya existe. Recarga el checkout e intenta otra vez.' });
+      }
+
+      const updated = await updateOrderByReference({
+        reference,
+        paymentProvider,
+        paymentMethod,
+        paymentStatus,
+      });
+
+      if (!updated) {
+        return res.status(409).json({ error: 'La referencia del pedido ya existe. Recarga el checkout e intenta otra vez.' });
+      }
+
+      return res.status(200).json({
+        id: existing.id,
+        referencia_pago: reference,
+        payment_provider: paymentProvider,
+        payment_method: paymentMethod,
+        payment_status: paymentStatus,
+        estado: resolveOrderState(paymentStatus),
+        updated: true,
+      });
     }
 
     const productIds = items.map((item) => item.productId);
@@ -312,6 +356,119 @@ function getWompiApiBase(publicKey) {
   return String(publicKey || '').startsWith('pub_test_')
     ? 'https://sandbox.wompi.co'
     : 'https://production.wompi.co';
+}
+
+function getWompiEventsSecret() {
+  return String(
+    process.env.WOMPI_EVENTS_SECRET
+    || process.env.WOMPI_WEBHOOK_SECRET
+    || process.env.WOMPI_INTEGRITY_SECRET
+    || ''
+  ).trim();
+}
+
+function getValueByPath(source, path) {
+  if (!source || !path) return '';
+  const normalized = String(path).trim();
+  if (!normalized) return '';
+
+  const parts = normalized.split('.').filter(Boolean);
+  let cursor = source;
+
+  for (const part of parts) {
+    if (cursor == null || typeof cursor !== 'object' || !(part in cursor)) {
+      return '';
+    }
+    cursor = cursor[part];
+  }
+
+  if (cursor == null) return '';
+  if (typeof cursor === 'object') return JSON.stringify(cursor);
+  return String(cursor);
+}
+
+function computeWompiEventChecksum(payload, secret) {
+  const signature = payload?.signature || {};
+  const properties = Array.isArray(signature.properties) ? signature.properties : [];
+  const data = payload?.data || {};
+  const timestamp = String(payload?.timestamp ?? '').trim();
+
+  let concat = '';
+  for (const propertyPath of properties) {
+    const directPathValue = getValueByPath(data, propertyPath);
+    const fallbackPathValue = directPathValue || getValueByPath(payload, propertyPath);
+    concat += fallbackPathValue;
+  }
+
+  concat += timestamp;
+  concat += secret;
+
+  return createHash('sha256').update(concat).digest('hex');
+}
+
+function normalizePaymentMethodFromWompi(value) {
+  const raw = String(value || '').trim().toUpperCase();
+  if (!raw) return 'wompi_webhook';
+  if (raw === 'BANCOLOMBIA_TRANSFER') return 'bancolombia_transfer';
+  if (raw === 'BANCOLOMBIA_QR') return 'bancolombia_qr';
+  return raw.toLowerCase();
+}
+
+export async function handleWompiWebhook(req, res) {
+  const payload = req.body || {};
+  const event = String(payload?.event || '').trim();
+
+  // Acknowledge unknown events to avoid unnecessary retries.
+  if (event !== 'transaction.updated') {
+    return res.status(200).json({ ok: true, ignored: true, reason: 'unsupported_event' });
+  }
+
+  const secret = getWompiEventsSecret();
+  if (!secret) {
+    return res.status(503).json({ error: 'Configura WOMPI_EVENTS_SECRET para validar webhooks.' });
+  }
+
+  const checksumFromBody = String(payload?.signature?.checksum || '').trim();
+  const checksumFromHeader = String(req.headers['x-event-checksum'] || '').trim();
+  const receivedChecksum = (checksumFromBody || checksumFromHeader).toLowerCase();
+  const computedChecksum = computeWompiEventChecksum(payload, secret).toLowerCase();
+
+  if (!receivedChecksum || receivedChecksum !== computedChecksum) {
+    return res.status(401).json({ error: 'Firma de evento inválida.' });
+  }
+
+  const tx = payload?.data?.transaction || {};
+  const reference = String(tx?.reference || '').trim();
+  const status = normalizeWompiTransactionStatus(tx?.status);
+
+  if (!reference) {
+    return res.status(200).json({ ok: true, ignored: true, reason: 'missing_reference' });
+  }
+
+  if (status === 'pending') {
+    return res.status(200).json({ ok: true, ignored: true, reason: 'non_final_status' });
+  }
+
+  const paymentMethod = normalizePaymentMethodFromWompi(tx?.payment_method_type);
+  const updated = await updateOrderByReference({
+    reference,
+    paymentProvider: 'wompi',
+    paymentMethod,
+    paymentStatus: status,
+  });
+
+  if (!updated) {
+    return res.status(200).json({ ok: true, ignored: true, reason: 'order_not_found', reference });
+  }
+
+  await logActividad({
+    accion: 'wompi_webhook_transaction_updated',
+    descripcion: `Webhook Wompi actualizó ${reference} a ${status}`,
+    ip: clientIp(req),
+    userAgent: req.headers['user-agent'] || null,
+  });
+
+  return res.status(200).json({ ok: true, updated: true, reference, paymentStatus: status });
 }
 
 export async function getWompiTransactionById(req, res) {

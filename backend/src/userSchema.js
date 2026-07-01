@@ -246,6 +246,37 @@ export async function ensureAddressesTable() {
   `);
 }
 
+export async function ensureAnnouncementsTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS anuncios (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      imagen_url VARCHAR(600) NOT NULL,
+      estado ENUM('activo', 'inactivo') NOT NULL DEFAULT 'activo',
+      creado_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      actualizado_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      INDEX idx_anuncios_estado (estado)
+    )
+  `);
+
+  const [rows] = await pool.query('SELECT COUNT(*) AS total FROM anuncios');
+  const total = Number(rows[0]?.total || 0);
+
+  if (total === 0) {
+    const samples = [
+      'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?auto=format&fit=crop&w=1400&q=80',
+      'https://images.unsplash.com/photo-1614179689702-355944cd0918?auto=format&fit=crop&w=1400&q=80',
+      'https://images.unsplash.com/photo-1559563458-527698bf5295?auto=format&fit=crop&w=1400&q=80',
+    ];
+
+    for (const url of samples) {
+      await pool.query(
+        "INSERT INTO anuncios (imagen_url, estado) VALUES (?, 'activo')",
+        [url]
+      );
+    }
+  }
+}
+
 export function normalizeUserRole(role) {
   return validRoles.has(role) ? role : 'user';
 }

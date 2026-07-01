@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { createAdminProducto, fetchAdminDashboard, fetchOrderDetail, updateAdminProducto, updateUsuarioRol } from '../api.js';
+import { createAdminAnnouncement, createAdminProducto, fetchAdminDashboard, fetchOrderDetail, updateAdminAnnouncement, updateAdminProducto, updateOrderStatus, updateUsuarioRol } from '../api.js';
 import { formatPrice as formatCurrency, normalizePrice } from '../utils/pricing.js';
 import './AdminDashboardPage.css';
 
@@ -32,8 +32,76 @@ function formatDate(value) {
   }).format(new Date(value));
 }
 
+function formatShortDate(value) {
+  return new Intl.DateTimeFormat('es-MX', {
+    day: '2-digit',
+    month: 'short',
+  }).format(new Date(value));
+}
+
 function buildRoleDrafts(users) {
   return Object.fromEntries(users.map((account) => [account.id, account.rol]));
+}
+
+function buildAnnouncementDrafts(announcements) {
+  return Object.fromEntries((announcements || []).map((item) => [item.id, {
+    imagen_url: item.imagen_url || '',
+    estado: item.estado || 'activo',
+  }]));
+}
+
+const ADMIN_TABS = [
+  { id: 'analitica', label: 'Analítica' },
+  { id: 'ventas', label: 'Ventas' },
+  { id: 'productos', label: 'Productos' },
+  { id: 'envios', label: 'Envíos' },
+  { id: 'anuncios', label: 'Anuncios' },
+];
+
+const SHIPMENT_STATES = [
+  { id: 'pendiente', label: 'Pendiente' },
+  { id: 'enviado', label: 'Enviado' },
+  { id: 'entregado', label: 'Entregado' },
+];
+
+function formatAddress(address) {
+  if (!address) {
+    return null;
+  }
+
+  const parts = [
+    address.calle,
+    address.ciudad,
+    address.estado,
+    address.codigo_postal,
+    address.pais,
+  ].filter((part) => part && String(part).trim());
+
+  return parts.length > 0 ? parts.join(', ') : null;
+}
+
+function normalizeOrderStatus(status) {
+  const normalized = String(status || '').trim().toLowerCase();
+
+  if (normalized === 'confirmado' || normalized === 'pagado' || normalized === 'pago confirmado') {
+    return 'pago_confirmado';
+  }
+
+  return normalized;
+}
+
+function getOrderStatusLabel(status) {
+  const normalized = normalizeOrderStatus(status);
+
+  const labels = {
+    pendiente: 'Pendiente',
+    pago_confirmado: 'Pago confirmado',
+    enviado: 'Enviado',
+    entregado: 'Entregado',
+    cancelado: 'Cancelado',
+  };
+
+  return labels[normalized] || String(status || 'Sin estado');
 }
 
 function AdminDashboardPage({ user, onProductCreated }) {
@@ -49,9 +117,20 @@ function AdminDashboardPage({ user, onProductCreated }) {
   const [editingProduct, setEditingProduct] = useState(null);
   const [editForm, setEditForm] = useState(initialProductForm);
   const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [announcementForm, setAnnouncementForm] = useState({ imagen_url: '', estado: 'activo' });
+  const [announcementDrafts, setAnnouncementDrafts] = useState({});
+  const [isCreatingAnnouncement, setIsCreatingAnnouncement] = useState(false);
+  const [savingAnnouncementId, setSavingAnnouncementId] = useState(null);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [orderDetail, setOrderDetail] = useState(null);
   const [loadingOrder, setLoadingOrder] = useState(false);
+
+  const [activeTab, setActiveTab] = useState('analitica');
+  const [updatingShipmentId, setUpdatingShipmentId] = useState(null);
+  const [shipmentSearch, setShipmentSearch] = useState('');
+  const [shipmentStatusFilter, setShipmentStatusFilter] = useState('all');
+  const [shipmentPage, setShipmentPage] = useState(0);
+  const [hoveredTimelineDay, setHoveredTimelineDay] = useState(null);
 
   const [orderSearch, setOrderSearch] = useState('');
   const [orderStatusFilter, setOrderStatusFilter] = useState('all');
@@ -74,6 +153,7 @@ function AdminDashboardPage({ user, onProductCreated }) {
       const data = await fetchAdminDashboard();
       setDashboard(data);
       setRoleDrafts(buildRoleDrafts(data.users || []));
+      setAnnouncementDrafts(buildAnnouncementDrafts(data.announcements || []));
     } catch (error) {
       setDashboardError(error.message || 'No se pudo cargar el dashboard administrativo.');
     } finally {
@@ -213,6 +293,71 @@ function AdminDashboardPage({ user, onProductCreated }) {
     }
   };
 
+  const handleShipmentStatusChange = async (orderId, nextState) => {
+    setUpdatingShipmentId(orderId);
+    setActionError('');
+    setSuccessMessage('');
+
+    try {
+      await updateOrderStatus(orderId, nextState);
+      setSuccessMessage(`La orden #${orderId} ahora está en estado "${nextState}".`);
+      await loadDashboard();
+    } catch (error) {
+      setActionError(error.message || 'No se pudo actualizar el estado de la orden.');
+    } finally {
+      setUpdatingShipmentId(null);
+    }
+  };
+
+  const handleCreateAnnouncement = async (event) => {
+    event.preventDefault();
+    setIsCreatingAnnouncement(true);
+    setActionError('');
+    setSuccessMessage('');
+
+    try {
+      const payload = {
+        imagen_url: String(announcementForm.imagen_url || '').trim(),
+        estado: announcementForm.estado === 'inactivo' ? 'inactivo' : 'activo',
+      };
+
+      await createAdminAnnouncement(payload);
+      setSuccessMessage('Anuncio creado correctamente.');
+      setAnnouncementForm({ imagen_url: '', estado: 'activo' });
+      await loadDashboard();
+    } catch (error) {
+      setActionError(error.message || 'No se pudo crear el anuncio.');
+    } finally {
+      setIsCreatingAnnouncement(false);
+    }
+  };
+
+  const handleSaveAnnouncement = async (announcementId) => {
+    const draft = announcementDrafts[announcementId];
+
+    if (!draft) {
+      return;
+    }
+
+    setSavingAnnouncementId(announcementId);
+    setActionError('');
+    setSuccessMessage('');
+
+    try {
+      await updateAdminAnnouncement(announcementId, {
+        imagen_url: String(draft.imagen_url || '').trim(),
+        estado: draft.estado === 'inactivo' ? 'inactivo' : 'activo',
+      });
+
+      setSuccessMessage(`Anuncio #${announcementId} actualizado.`);
+      await loadDashboard();
+    } catch (error) {
+      setActionError(error.message || 'No se pudo actualizar el anuncio.');
+    } finally {
+      setSavingAnnouncementId(null);
+    }
+  };
+
   const metrics = dashboard?.metrics || {
     totalRevenue: 0,
     totalOrders: 0,
@@ -230,6 +375,7 @@ function AdminDashboardPage({ user, onProductCreated }) {
   const users = dashboard?.users || [];
   const products = dashboard?.products || [];
   const alerts = dashboard?.alerts || [];
+  const announcements = dashboard?.announcements || [];
   const lowStockRatio = metrics.totalProducts > 0 ? Math.round((metrics.lowStockProducts / metrics.totalProducts) * 100) : 0;
   const adminCoverage = metrics.totalUsers > 0 ? Math.round((metrics.totalAdmins / metrics.totalUsers) * 100) : 0;
   const maxCategoryStock = Math.max(...categoryBreakdown.map((category) => Number(category.stockTotal || 0)), 1);
@@ -239,7 +385,7 @@ function AdminDashboardPage({ user, onProductCreated }) {
       order.cliente?.toLowerCase().includes(orderSearch.toLowerCase()) ||
       order.cliente_email?.toLowerCase().includes(orderSearch.toLowerCase()) ||
       String(order.id).includes(orderSearch);
-    const matchesStatus = orderStatusFilter === 'all' || order.estado === orderStatusFilter;
+    const matchesStatus = orderStatusFilter === 'all' || normalizeOrderStatus(order.estado) === orderStatusFilter;
     return matchesSearch && matchesStatus;
   });
   const orderTotalPages = Math.max(1, Math.ceil(filteredOrders.length / PAGE_SIZE));
@@ -255,6 +401,130 @@ function AdminDashboardPage({ user, onProductCreated }) {
   });
   const productTotalPages = Math.max(1, Math.ceil(filteredProducts.length / PAGE_SIZE));
   const paginatedProducts = filteredProducts.slice(productPage * PAGE_SIZE, (productPage + 1) * PAGE_SIZE);
+
+  const now = new Date();
+  const salesWindowStart = new Date(now);
+  salesWindowStart.setHours(0, 0, 0, 0);
+  salesWindowStart.setDate(salesWindowStart.getDate() - 29);
+
+  const salesStatuses = new Set(['pago_confirmado', 'enviado', 'entregado']);
+  const lastMonthSales = recentOrders.filter((order) => {
+    const normalizedStatus = normalizeOrderStatus(order.estado);
+    const orderDate = new Date(order.creado_at);
+    return salesStatuses.has(normalizedStatus) && !Number.isNaN(orderDate.getTime()) && orderDate >= salesWindowStart;
+  });
+
+  const pieStatusOrder = ['pago_confirmado', 'enviado', 'entregado'];
+  const pieStatusColors = {
+    pago_confirmado: '#0ea5a0',
+    enviado: '#2563eb',
+    entregado: '#7c3aed',
+  };
+
+  const pieStatusMap = lastMonthSales.reduce((acc, order) => {
+    const status = normalizeOrderStatus(order.estado);
+    const amount = Number(order.total || 0);
+    const current = acc.get(status) || { status, amount: 0, count: 0 };
+    current.amount += amount;
+    current.count += 1;
+    acc.set(status, current);
+    return acc;
+  }, new Map());
+
+  const pieRows = pieStatusOrder
+    .map((status) => {
+      const row = pieStatusMap.get(status) || { status, amount: 0, count: 0 };
+      return {
+        ...row,
+        label: getOrderStatusLabel(status),
+        color: pieStatusColors[status],
+      };
+    })
+    .filter((row) => row.amount > 0);
+
+  const pieTotalAmount = pieRows.reduce((sum, row) => sum + row.amount, 0);
+  let pieOffset = 0;
+  const pieSegments = pieRows.map((row) => {
+    const percentage = pieTotalAmount > 0 ? (row.amount / pieTotalAmount) * 100 : 0;
+    const segment = {
+      ...row,
+      percentage,
+      dashOffset: -pieOffset,
+    };
+    pieOffset += percentage;
+    return segment;
+  });
+
+  const timelineDays = Array.from({ length: 30 }, (_, index) => {
+    const date = new Date(salesWindowStart);
+    date.setDate(salesWindowStart.getDate() + index);
+    const key = date.toISOString().slice(0, 10);
+    return { date, key, total: 0, orders: 0, products: 0 };
+  });
+
+  const timelineMap = new Map(timelineDays.map((day) => [day.key, day]));
+
+  lastMonthSales.forEach((order) => {
+    const date = new Date(order.creado_at);
+    const key = date.toISOString().slice(0, 10);
+    const bucket = timelineMap.get(key);
+
+    if (bucket) {
+      bucket.total += Number(order.total || 0);
+      bucket.orders += 1;
+      bucket.products += Number(order.total_productos || 0);
+    }
+  });
+
+  const timelineSeries = timelineDays.map((day) => timelineMap.get(day.key) || day);
+  const timelineMaxTotal = Math.max(...timelineSeries.map((day) => day.total), 1);
+  const timelineChartHeight = 72;
+  const timelinePointsData = timelineSeries.map((day, index) => {
+    const x = timelineSeries.length > 1 ? (index / (timelineSeries.length - 1)) * 100 : 0;
+    const y = timelineChartHeight - (day.total / timelineMaxTotal) * timelineChartHeight;
+
+    return {
+      ...day,
+      x,
+      y,
+    };
+  });
+
+  const timelineLinePoints = timelinePointsData
+    .map((point) => `${point.x},${point.y}`)
+    .join(' ');
+
+  const timelineAreaPoints = `0,${timelineChartHeight} ${timelineLinePoints} 100,${timelineChartHeight}`;
+
+  const hoveredDayData = hoveredTimelineDay
+    ? timelinePointsData.find((day) => day.key === hoveredTimelineDay) || null
+    : null;
+
+  const timelineLabels = [
+    timelineSeries[0],
+    timelineSeries[Math.floor((timelineSeries.length - 1) / 2)],
+    timelineSeries[timelineSeries.length - 1],
+  ];
+
+  const shipments = recentOrders.filter((order) => order.cliente_tipo !== 'anonimo' || order.direccion_envio);
+  const filteredShipments = recentOrders.filter((order) => {
+    const address = order.direccion_envio;
+    const matchesSearch = !shipmentSearch ||
+      order.cliente?.toLowerCase().includes(shipmentSearch.toLowerCase()) ||
+      order.cliente_email?.toLowerCase().includes(shipmentSearch.toLowerCase()) ||
+      String(order.id).includes(shipmentSearch) ||
+      (address && formatAddress(address)?.toLowerCase().includes(shipmentSearch.toLowerCase()));
+    const matchesStatus = shipmentStatusFilter === 'all' || normalizeOrderStatus(order.estado) === shipmentStatusFilter;
+    return matchesSearch && matchesStatus;
+  });
+  const shipmentTotalPages = Math.max(1, Math.ceil(filteredShipments.length / PAGE_SIZE));
+  const paginatedShipments = filteredShipments.slice(shipmentPage * PAGE_SIZE, (shipmentPage + 1) * PAGE_SIZE);
+  const pendingShipments = shipments.filter((order) => {
+    const normalizedStatus = normalizeOrderStatus(order.estado);
+    return normalizedStatus === 'pendiente' || normalizedStatus === 'pago_confirmado';
+  }).length;
+  const inTransitShipments = shipments.filter((order) => order.estado === 'enviado').length;
+  const deliveredShipments = shipments.filter((order) => order.estado === 'entregado').length;
 
   return (
     <main className="admin-page">
@@ -275,6 +545,20 @@ function AdminDashboardPage({ user, onProductCreated }) {
           </div>
         </header>
 
+        <nav className="admin-tabbar" aria-label="Secciones del panel">
+          {ADMIN_TABS.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              className={`admin-tab ${activeTab === tab.id ? 'is-active' : ''}`}
+              onClick={() => setActiveTab(tab.id)}
+              aria-current={activeTab === tab.id ? 'page' : undefined}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </nav>
+
         {(successMessage || actionError) && (
           <div className={`admin-feedback ${actionError ? 'is-error' : 'is-success'}`}>
             {actionError || successMessage}
@@ -289,6 +573,8 @@ function AdminDashboardPage({ user, onProductCreated }) {
           </div>
         ) : (
           <>
+            {activeTab === 'analitica' && (
+            <>
             <section className="admin-kpi-grid">
               <article className="admin-kpi-card">
                 <span className="admin-kpi-label">Ventas totales</span>
@@ -398,6 +684,146 @@ function AdminDashboardPage({ user, onProductCreated }) {
               </article>
             </section>
 
+            <section className="admin-report-grid admin-analytics-charts-grid">
+              <article className="admin-panel admin-chart-panel">
+                <div className="admin-panel-head">
+                  <div>
+                    <p className="admin-panel-kicker">Últimas ventas</p>
+                    <h2>Distribución por estado (pastel)</h2>
+                  </div>
+                </div>
+
+                {pieTotalAmount > 0 ? (
+                  <div className="admin-pie-layout">
+                    <div className="admin-pie-wrap" aria-hidden="true">
+                      <svg viewBox="0 0 160 160" className="admin-pie-chart" role="img">
+                        <circle className="admin-pie-track" cx="80" cy="80" r="56" pathLength="100" />
+                        {pieSegments.map((segment) => (
+                          <circle
+                            key={segment.status}
+                            className="admin-pie-slice"
+                            cx="80"
+                            cy="80"
+                            r="56"
+                            pathLength="100"
+                            style={{
+                              stroke: segment.color,
+                              strokeDasharray: `${segment.percentage} ${100 - segment.percentage}`,
+                              strokeDashoffset: segment.dashOffset,
+                            }}
+                          />
+                        ))}
+                      </svg>
+                      <div className="admin-pie-center">
+                        <strong>{formatCurrency(pieTotalAmount)}</strong>
+                        <small>Últimos 30 días</small>
+                      </div>
+                    </div>
+
+                    <div className="admin-pie-legend">
+                      {pieSegments.map((segment) => (
+                        <div key={segment.status} className="admin-pie-legend-item">
+                          <span className="admin-pie-color" style={{ backgroundColor: segment.color }} />
+                          <div>
+                            <strong>{segment.label}</strong>
+                            <p>{formatCurrency(segment.amount)} · {formatInteger(segment.count)} ordenes</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="admin-empty-state compact">
+                    <h3>Sin ventas recientes</h3>
+                    <p>No hay órdenes de venta en los últimos 30 días para dibujar la gráfica de pastel.</p>
+                  </div>
+                )}
+              </article>
+
+              <article className="admin-panel admin-chart-panel">
+                <div className="admin-panel-head">
+                  <div>
+                    <p className="admin-panel-kicker">Último mes</p>
+                    <h2>Línea de ventas diarias</h2>
+                  </div>
+                </div>
+
+                {lastMonthSales.length > 0 ? (
+                  <div className="admin-line-layout">
+                    <div className="admin-line-meta">
+                      <div>
+                        <span>Total vendido</span>
+                        <strong>{formatCurrency(lastMonthSales.reduce((sum, order) => sum + Number(order.total || 0), 0))}</strong>
+                      </div>
+                      <div>
+                        <span>Órdenes del mes</span>
+                        <strong>{formatInteger(lastMonthSales.length)}</strong>
+                      </div>
+                    </div>
+
+                    <div className="admin-line-chart-wrap">
+                      <svg viewBox={`0 0 100 ${timelineChartHeight}`} className="admin-line-chart">
+                        <line x1="0" y1={timelineChartHeight} x2="100" y2={timelineChartHeight} className="admin-line-axis" />
+                        <line x1="0" y1={timelineChartHeight / 2} x2="100" y2={timelineChartHeight / 2} className="admin-line-axis is-mid" />
+                        <line x1="0" y1="0" x2="100" y2="0" className="admin-line-axis" />
+                        <polygon points={timelineAreaPoints} className="admin-line-area" />
+                        <polyline points={timelineLinePoints} className="admin-line-stroke" />
+                        {timelinePointsData.map((day) => (
+                          <circle
+                            key={day.key}
+                            cx={day.x}
+                            cy={day.y}
+                            r={hoveredTimelineDay === day.key ? 1.55 : 1.1}
+                            className={`admin-line-point ${hoveredTimelineDay === day.key ? 'is-active' : ''}`}
+                            onMouseEnter={() => setHoveredTimelineDay(day.key)}
+                            onMouseLeave={() => setHoveredTimelineDay(null)}
+                            onFocus={() => setHoveredTimelineDay(day.key)}
+                            onBlur={() => setHoveredTimelineDay(null)}
+                          />
+                        ))}
+                      </svg>
+
+                      {hoveredDayData ? (
+                        <div
+                          className={`admin-line-tooltip ${hoveredDayData.x > 72 ? 'is-left' : 'is-right'}`}
+                          style={{
+                            left: `${hoveredDayData.x}%`,
+                            top: `${(hoveredDayData.y / timelineChartHeight) * 100}%`,
+                          }}
+                        >
+                          <strong>{formatShortDate(hoveredDayData.date)}</strong>
+                          <span>Productos: {formatInteger(hoveredDayData.products)}</span>
+                          <span>Ventas: {formatCurrency(hoveredDayData.total)}</span>
+                        </div>
+                      ) : null}
+                    </div>
+
+                    <div className="admin-line-y-scale">
+                      <span>{formatCurrency(timelineMaxTotal)}</span>
+                      <span>{formatCurrency(timelineMaxTotal / 2)}</span>
+                      <span>{formatCurrency(0)}</span>
+                    </div>
+
+                    <div className="admin-line-labels">
+                      {timelineLabels.map((day) => (
+                        <span key={day.key}>{formatShortDate(day.date)}</span>
+                      ))}
+                    </div>
+
+                    <div className="admin-line-hint">Pasa el cursor por cada puntico para ver el detalle diario.</div>
+                  </div>
+                ) : (
+                  <div className="admin-empty-state compact">
+                    <h3>Sin movimientos este mes</h3>
+                    <p>La línea de tiempo aparecerá cuando existan ventas registradas durante el último mes.</p>
+                  </div>
+                )}
+              </article>
+            </section>
+            </>
+            )}
+
+            {activeTab === 'ventas' && (
             <section className="admin-panel admin-orders-panel">
               <div className="admin-panel-head">
                 <div>
@@ -421,7 +847,7 @@ function AdminDashboardPage({ user, onProductCreated }) {
                 >
                   <option value="all">Todos los estados</option>
                   <option value="pendiente">Pendiente</option>
-                  <option value="pagado">Pagado</option>
+                  <option value="pago_confirmado">Pago confirmado</option>
                   <option value="enviado">Enviado</option>
                   <option value="entregado">Entregado</option>
                 </select>
@@ -443,13 +869,16 @@ function AdminDashboardPage({ user, onProductCreated }) {
                         </tr>
                       </thead>
                       <tbody>
-                        {paginatedOrders.map((order) => (
+                        {paginatedOrders.map((order) => {
+                          const normalizedStatus = normalizeOrderStatus(order.estado);
+
+                          return (
                           <tr key={order.id} className="admin-order-row" onClick={() => handleOrderClick(order.id)}>
                             <td><strong>{order.id}</strong></td>
                             <td>{order.cliente}</td>
                             <td><small>{order.cliente_email || '—'}</small></td>
                             <td>{formatCurrency(order.total)}</td>
-                            <td><span className={`admin-status-badge is-${order.estado}`}>{order.estado}</span></td>
+                            <td><span className={`admin-status-badge is-${normalizedStatus}`}>{getOrderStatusLabel(order.estado)}</span></td>
                             <td><small>{formatDate(order.creado_at)}</small></td>
                             <td>
                               <button
@@ -461,7 +890,8 @@ function AdminDashboardPage({ user, onProductCreated }) {
                               </button>
                             </td>
                           </tr>
-                        ))}
+                        );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -478,7 +908,9 @@ function AdminDashboardPage({ user, onProductCreated }) {
                 </div>
               )}
             </section>
+            )}
 
+            {activeTab === 'analitica' && (
             <section className="admin-report-grid admin-report-grid-secondary">
               <article className="admin-panel">
                 <div className="admin-panel-head">
@@ -537,7 +969,9 @@ function AdminDashboardPage({ user, onProductCreated }) {
                 </div>
               </article>
             </section>
+            )}
 
+            {activeTab === 'productos' && (
             <section className="admin-management-grid">
               <article className="admin-panel">
                 <div className="admin-panel-head">
@@ -600,7 +1034,11 @@ function AdminDashboardPage({ user, onProductCreated }) {
                   </button>
                 </form>
               </article>
+            </section>
+            )}
 
+            {activeTab === 'ventas' && (
+            <section className="admin-management-grid">
               <article className="admin-panel">
                 <div className="admin-panel-head">
                   <div>
@@ -644,7 +1082,9 @@ function AdminDashboardPage({ user, onProductCreated }) {
                 </div>
               </article>
             </section>
+            )}
 
+            {activeTab === 'productos' && (
             <section className="admin-panel admin-products-panel">
               <div className="admin-panel-head">
                 <div>
@@ -725,6 +1165,273 @@ function AdminDashboardPage({ user, onProductCreated }) {
                 </div>
               )}
             </section>
+            )}
+
+            {activeTab === 'envios' && (
+            <>
+              <section className="admin-kpi-grid admin-shipments-summary">
+                <article className="admin-kpi-card">
+                  <span className="admin-kpi-label">Pendientes</span>
+                  <strong>{formatInteger(pendingShipments)}</strong>
+                  <p>Órdenes por preparar y despachar</p>
+                </article>
+                <article className="admin-kpi-card">
+                  <span className="admin-kpi-label">En camino</span>
+                  <strong>{formatInteger(inTransitShipments)}</strong>
+                  <p>Envíos marcados como enviados</p>
+                </article>
+                <article className="admin-kpi-card admin-kpi-card-accent">
+                  <span className="admin-kpi-label">Entregados</span>
+                  <strong>{formatInteger(deliveredShipments)}</strong>
+                  <p>Órdenes completadas</p>
+                </article>
+              </section>
+
+              <section className="admin-panel admin-shipments-panel">
+                <div className="admin-panel-head">
+                  <div>
+                    <p className="admin-panel-kicker">Gestión de envíos</p>
+                    <h2>Direcciones y trazabilidad de órdenes</h2>
+                  </div>
+                </div>
+
+                <div className="admin-table-controls">
+                  <input
+                    type="text"
+                    className="admin-search-input"
+                    placeholder="Buscar por cliente, email, dirección o # orden..."
+                    value={shipmentSearch}
+                    onChange={(e) => { setShipmentSearch(e.target.value); setShipmentPage(0); }}
+                  />
+                  <select
+                    className="admin-filter-select"
+                    value={shipmentStatusFilter}
+                    onChange={(e) => { setShipmentStatusFilter(e.target.value); setShipmentPage(0); }}
+                  >
+                    <option value="all">Todos los estados</option>
+                    <option value="pendiente">Pendiente</option>
+                    <option value="pago_confirmado">Pago confirmado</option>
+                    <option value="enviado">Enviado</option>
+                    <option value="entregado">Entregado</option>
+                  </select>
+                </div>
+
+                {paginatedShipments.length > 0 ? (
+                  <>
+                    <div className="admin-shipments-list">
+                      {paginatedShipments.map((order) => {
+                        const address = order.direccion_envio;
+                        const addressLine = formatAddress(address);
+                        const normalizedStatus = normalizeOrderStatus(order.estado);
+
+                        return (
+                          <article key={order.id} className="admin-shipment-card">
+                            <div className="admin-shipment-main">
+                              <div className="admin-shipment-heading">
+                                <div>
+                                  <span className="admin-shipment-order">Orden #{order.id}</span>
+                                  <strong>{order.cliente}</strong>
+                                  <small>{order.cliente_email || '—'}</small>
+                                </div>
+                                <span className={`admin-status-badge is-${normalizedStatus}`}>{getOrderStatusLabel(order.estado)}</span>
+                              </div>
+
+                              <div className="admin-shipment-address">
+                                <span className="admin-shipment-label">Dirección de envío</span>
+                                {addressLine ? (
+                                  <>
+                                    {address?.nombre_receptor && <p><strong>{address.nombre_receptor}</strong></p>}
+                                    <p>{addressLine}</p>
+                                    {(address?.telefono || order.cliente_telefono) && (
+                                      <small>Tel: {address?.telefono || order.cliente_telefono}</small>
+                                    )}
+                                    {address?.referencia && <small>Ref: {address.referencia}</small>}
+                                  </>
+                                ) : (
+                                  <p className="admin-shipment-empty">Sin dirección registrada para esta orden.</p>
+                                )}
+                              </div>
+
+                              <div className="admin-shipment-footer">
+                                <small>Total: {formatCurrency(order.total)}</small>
+                                <small>{formatDate(order.creado_at)}</small>
+                                <button
+                                  type="button"
+                                  className="admin-secondary-button admin-edit-btn"
+                                  onClick={() => handleOrderClick(order.id)}
+                                >
+                                  Ver detalle
+                                </button>
+                              </div>
+                            </div>
+
+                            <div className="admin-shipment-track">
+                              <span className="admin-shipment-label">Estado del envío</span>
+                              <div className="admin-shipment-states">
+                                {SHIPMENT_STATES.map((state) => {
+                                  const isCurrent = normalizedStatus === state.id;
+                                  return (
+                                    <button
+                                      key={state.id}
+                                      type="button"
+                                      className={`admin-shipment-state ${isCurrent ? 'is-active' : ''}`}
+                                      disabled={isCurrent || updatingShipmentId === order.id}
+                                      onClick={() => handleShipmentStatusChange(order.id, state.id)}
+                                    >
+                                      {updatingShipmentId === order.id && !isCurrent ? '...' : state.label}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </article>
+                        );
+                      })}
+                    </div>
+                    <div className="admin-pagination">
+                      <button type="button" disabled={shipmentPage === 0} onClick={() => setShipmentPage((p) => p - 1)}>← Anterior</button>
+                      <span>Página {shipmentPage + 1} de {shipmentTotalPages} ({filteredShipments.length} resultados)</span>
+                      <button type="button" disabled={shipmentPage + 1 >= shipmentTotalPages} onClick={() => setShipmentPage((p) => p + 1)}>Siguiente →</button>
+                    </div>
+                  </>
+                ) : (
+                  <div className="admin-empty-state compact">
+                    <h3>Sin envíos</h3>
+                    <p>{recentOrders.length > 0 ? 'No hay órdenes que coincidan con los filtros.' : 'Cuando se generen órdenes con dirección, aquí podrás gestionar los envíos.'}</p>
+                  </div>
+                )}
+              </section>
+            </>
+            )}
+
+            {activeTab === 'anuncios' && (
+            <section className="admin-management-grid">
+              <article className="admin-panel admin-announcements-panel">
+                <div className="admin-panel-head">
+                  <div>
+                    <p className="admin-panel-kicker">Anuncios emergentes</p>
+                    <h2>Configura el carrusel de inicio</h2>
+                  </div>
+                </div>
+
+                <p className="admin-announcement-help">Puedes registrar hasta 5 anuncios. Cada anuncio usa imagen por URL y estado activo/inactivo.</p>
+
+                {announcements.length < 5 ? (
+                  <form className="admin-product-form" onSubmit={handleCreateAnnouncement}>
+                    <div className="admin-form-grid">
+                      <label className="admin-field admin-field-wide">
+                        <span>Imagen URL</span>
+                        <input
+                          type="url"
+                          value={announcementForm.imagen_url}
+                          onChange={(e) => setAnnouncementForm((current) => ({ ...current, imagen_url: e.target.value }))}
+                          placeholder="https://..."
+                          required
+                        />
+                      </label>
+
+                      <label className="admin-field">
+                        <span>Estado</span>
+                        <select
+                          value={announcementForm.estado}
+                          onChange={(e) => setAnnouncementForm((current) => ({ ...current, estado: e.target.value }))}
+                        >
+                          <option value="activo">activo</option>
+                          <option value="inactivo">inactivo</option>
+                        </select>
+                      </label>
+                    </div>
+
+                    <button type="submit" className="admin-primary-button" disabled={isCreatingAnnouncement}>
+                      {isCreatingAnnouncement ? 'Guardando anuncio...' : 'Agregar anuncio'}
+                    </button>
+                  </form>
+                ) : (
+                  <div className="admin-empty-state compact">
+                    <h3>Límite alcanzado</h3>
+                    <p>Ya tienes 5 anuncios. Edita uno existente para reutilizarlo.</p>
+                  </div>
+                )}
+              </article>
+
+              <article className="admin-panel admin-announcements-panel">
+                <div className="admin-panel-head">
+                  <div>
+                    <p className="admin-panel-kicker">Anuncios actuales</p>
+                    <h2>Activar, desactivar o cambiar imágenes</h2>
+                  </div>
+                </div>
+
+                {announcements.length > 0 ? (
+                  <div className="admin-announcements-list">
+                    {announcements.map((item) => {
+                      const draft = announcementDrafts[item.id] || {
+                        imagen_url: item.imagen_url,
+                        estado: item.estado,
+                      };
+
+                      return (
+                        <div key={item.id} className="admin-announcement-item">
+                          <div className="admin-announcement-preview">
+                            <img src={draft.imagen_url || item.imagen_url} alt={`Anuncio ${item.id}`} loading="lazy" referrerPolicy="no-referrer" />
+                            <span className={`admin-status-badge is-${draft.estado}`}>{draft.estado}</span>
+                          </div>
+
+                          <div className="admin-announcement-controls">
+                            <label className="admin-field admin-field-wide">
+                              <span>Imagen URL</span>
+                              <input
+                                type="url"
+                                value={draft.imagen_url}
+                                onChange={(e) => setAnnouncementDrafts((current) => ({
+                                  ...current,
+                                  [item.id]: {
+                                    ...draft,
+                                    imagen_url: e.target.value,
+                                  },
+                                }))}
+                              />
+                            </label>
+
+                            <label className="admin-field">
+                              <span>Estado</span>
+                              <select
+                                value={draft.estado}
+                                onChange={(e) => setAnnouncementDrafts((current) => ({
+                                  ...current,
+                                  [item.id]: {
+                                    ...draft,
+                                    estado: e.target.value,
+                                  },
+                                }))}
+                              >
+                                <option value="activo">activo</option>
+                                <option value="inactivo">inactivo</option>
+                              </select>
+                            </label>
+
+                            <button
+                              type="button"
+                              className="admin-secondary-button"
+                              onClick={() => handleSaveAnnouncement(item.id)}
+                              disabled={savingAnnouncementId === item.id}
+                            >
+                              {savingAnnouncementId === item.id ? 'Guardando...' : 'Guardar cambios'}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="admin-empty-state compact">
+                    <h3>Sin anuncios</h3>
+                    <p>Agrega anuncios para mostrarlos en el popup de inicio.</p>
+                  </div>
+                )}
+              </article>
+            </section>
+            )}
           </>
         )}
 
@@ -748,7 +1455,7 @@ function AdminDashboardPage({ user, onProductCreated }) {
                       <small>{orderDetail.cliente_email || '—'}</small>
                     </div>
                     <div className="admin-order-detail-meta">
-                      <span className={`admin-status-badge is-${orderDetail.estado}`}>{orderDetail.estado}</span>
+                      <span className={`admin-status-badge is-${normalizeOrderStatus(orderDetail.estado)}`}>{getOrderStatusLabel(orderDetail.estado)}</span>
                       <small>{formatDate(orderDetail.creado_at)}</small>
                     </div>
                   </div>
