@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'https://e-commerceproject-production-1031.up.railway.app/api';
 const SESSION_STORAGE_KEY = 'azami-user';
 
 function getStoredSession() {
