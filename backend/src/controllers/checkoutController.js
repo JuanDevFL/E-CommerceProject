@@ -103,7 +103,7 @@ function getWompiCheckoutSettings(req) {
   ).trim();
 
   const rawRedirectUrl = configuredRedirectUrl || fallbackRedirectUrl;
-  const shouldSkipRedirectUrl = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//i.test(rawRedirectUrl);
+  const shouldSkipRedirectUrl = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(?:\/|$)/i.test(rawRedirectUrl);
 
   return {
     publicKey: String(process.env.WOMPI_PUBLIC_KEY || process.env.VITE_WOMPI_PUBLIC_KEY || '').trim(),
