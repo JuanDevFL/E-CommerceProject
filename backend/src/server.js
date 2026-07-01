@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import { isMockLoginMode } from './data/mockAuthUsers.js';
+import { assertAuthSecretsAreSafe } from './auth.js';
 import checkoutRoutes from './routes/checkoutRoutes.js';
 import { requestLogger } from './middleware/requestLogger.js';
 import accountRoutes from './routes/accountRoutes.js';
@@ -68,6 +69,8 @@ app.use((err, req, res, next) => {
 
 async function bootstrap() {
   try {
+    assertAuthSecretsAreSafe();
+
     if (!isMockLoginMode()) {
       await ensureUsuariosTable();
       await ensurePasswordResetTokensTable();
