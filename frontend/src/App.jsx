@@ -27,6 +27,7 @@ const USER_STORAGE_KEY = 'azami-user';
 const CONSENT_STORAGE_KEY = 'azami-consent';
 const CONSENT_VERSION = '2026-06-04';
 const GUEST_CART_KEY = 'azami-cart-guest';
+const ANNOUNCEMENT_SESSION_KEY = 'azami-announcement-seen';
 
 function getCartStorage() {
   return window.sessionStorage;
@@ -160,6 +161,22 @@ function getStoredConsent() {
   }
 }
 
+function hasSeenAnnouncementSession() {
+  try {
+    return window.sessionStorage.getItem(ANNOUNCEMENT_SESSION_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function markAnnouncementSeenSession() {
+  try {
+    window.sessionStorage.setItem(ANNOUNCEMENT_SESSION_KEY, '1');
+  } catch {
+    // ignore
+  }
+}
+
 function AdminRoute({ user, children }) {
   if (!user || !user.token) {
     return <Navigate to="/auth" replace />;
@@ -208,6 +225,7 @@ function App() {
 
   const isAuthPage = location.pathname === '/auth' || location.pathname.startsWith('/reset-password');
   const isAdminPage = location.pathname.startsWith('/admin');
+  const isHomePage = location.pathname === '/';
 
   useEffect(() => {
     if (location.pathname !== prevPathRef.current) {
@@ -233,9 +251,10 @@ function App() {
         const items = Array.isArray(data?.announcements) ? data.announcements.slice(0, 5) : [];
         setAnnouncements(items);
 
-        if (items.length > 0 && !isAdminPage && !isAuthPage) {
+        if (items.length > 0 && isHomePage && !isAdminPage && !isAuthPage && !hasSeenAnnouncementSession()) {
           setAnnouncementIndex(0);
           setShowAnnouncementPopup(true);
+          markAnnouncementSeenSession();
         }
       } catch {
         if (isMounted) {
@@ -249,7 +268,13 @@ function App() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [isAdminPage, isAuthPage, isHomePage]);
+
+  useEffect(() => {
+    if (!isHomePage) {
+      setShowAnnouncementPopup(false);
+    }
+  }, [isHomePage]);
 
   useEffect(() => {
     if (!showAnnouncementPopup || announcements.length <= 1) {
