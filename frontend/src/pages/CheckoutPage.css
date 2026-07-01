@@ -337,6 +337,48 @@
   background: color-mix(in srgb, var(--color-primary) 10%, transparent);
 }
 
+.checkout-sandbox-guide {
+  margin-top: 0.65rem;
+  padding: 0.9rem 1rem;
+  border-radius: 0.9rem;
+  border: 1px dashed color-mix(in srgb, var(--color-primary) 25%, transparent);
+  background: color-mix(in srgb, var(--color-primary) 7%, transparent);
+}
+
+.checkout-sandbox-title {
+  margin: 0;
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--color-heading, var(--color-text));
+}
+
+.checkout-sandbox-subtitle {
+  margin: 0.3rem 0 0.65rem;
+  font-size: 0.78rem;
+  color: var(--color-muted, #888);
+}
+
+.checkout-sandbox-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.65rem;
+}
+
+.checkout-sandbox-grid strong {
+  font-size: 0.8rem;
+}
+
+.checkout-sandbox-grid ul {
+  margin: 0.3rem 0 0;
+  padding-left: 1.1rem;
+}
+
+.checkout-sandbox-grid li {
+  font-size: 0.76rem;
+  line-height: 1.5;
+  color: var(--color-muted, #888);
+}
+
 .checkout-wompi-container {
   width: 100%;
 }

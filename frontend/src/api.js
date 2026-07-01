@@ -114,6 +114,12 @@ export async function fetchWompiWidgetConfig(payload) {
   });
 }
 
+export async function fetchWompiTransaction(transactionId) {
+  return request(`/checkout/wompi/transactions/${encodeURIComponent(transactionId)}`, {
+    method: 'GET',
+  });
+}
+
 export async function registerUsuario(payload) {
   return request('/usuarios/register', {
     method: 'POST',

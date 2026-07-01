@@ -13,6 +13,20 @@ function normalizePaymentStatus(value) {
   return ['approved', 'pending', 'rejected'].includes(status) ? status : 'pending';
 }
 
+function normalizeWompiTransactionStatus(value) {
+  const status = String(value || '').trim().toUpperCase();
+
+  if (status === 'APPROVED') {
+    return 'approved';
+  }
+
+  if (['DECLINED', 'VOIDED', 'ERROR'].includes(status)) {
+    return 'rejected';
+  }
+
+  return 'pending';
+}
+
 function resolveOrderState(paymentStatus) {
   if (paymentStatus === 'pending') return 'pendiente';
   if (paymentStatus === 'rejected') return 'cancelado';
@@ -63,7 +77,16 @@ function normalizeGuestAddress(rawAddress) {
 
 function getWompiCheckoutSettings(req) {
   const requestOrigin = String(req.headers.origin || '').trim();
-  const fallbackRedirectUrl = requestOrigin ? `${requestOrigin.replace(/\/$/, '')}/checkout` : '';
+  const fallbackRedirectUrl = process.env.NODE_ENV === 'production' && requestOrigin
+    ? `${requestOrigin.replace(/\/$/, '')}/checkout`
+    : '';
+
+  const configuredRedirectUrl = String(
+    process.env.WOMPI_REDIRECT_URL || process.env.VITE_WOMPI_REDIRECT_URL || ''
+  ).trim();
+
+  const rawRedirectUrl = configuredRedirectUrl || fallbackRedirectUrl;
+  const shouldSkipRedirectUrl = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//i.test(rawRedirectUrl);
 
   return {
     publicKey: String(process.env.WOMPI_PUBLIC_KEY || process.env.VITE_WOMPI_PUBLIC_KEY || '').trim(),
@@ -74,7 +97,8 @@ function getWompiCheckoutSettings(req) {
       || ''
     ).trim(),
     currency: String(process.env.WOMPI_CURRENCY || process.env.VITE_WOMPI_CURRENCY || STORE_CURRENCY).trim().toUpperCase() || STORE_CURRENCY,
-    redirectUrl: String(process.env.WOMPI_REDIRECT_URL || process.env.VITE_WOMPI_REDIRECT_URL || fallbackRedirectUrl).trim(),
+    // CloudFront can block localhost redirect URLs in widget mode (403).
+    redirectUrl: shouldSkipRedirectUrl ? '' : rawRedirectUrl,
   };
 }
 
@@ -97,6 +121,13 @@ export function createWompiWidgetConfig(req, res) {
     return res.status(503).json({ error: 'Configura WOMPI_PUBLIC_KEY en el backend para activar el widget de Wompi.' });
   }
 
+  // In local/staging environments force test keys to avoid accidental public charges.
+  if (process.env.NODE_ENV !== 'production' && !settings.publicKey.startsWith('pub_test_')) {
+    return res.status(400).json({
+      error: 'En ambiente no productivo WOMPI_PUBLIC_KEY debe iniciar con pub_test_.',
+    });
+  }
+
   if (!settings.integritySecret) {
     return res.status(503).json({ error: 'Configura WOMPI_INTEGRITY_SECRET en el backend. La firma de integridad no debe vivir en el frontend.' });
   }
@@ -112,6 +143,7 @@ export function createWompiWidgetConfig(req, res) {
     reference,
     redirectUrl: settings.redirectUrl,
     signatureIntegrity,
+    isSandbox: settings.publicKey.startsWith('pub_test_'),
   });
 }
 
@@ -273,5 +305,53 @@ export async function createGuestOrder(req, res) {
     res.status(500).json({ error: error.message || 'Error al crear el pedido.' });
   } finally {
     connection?.release();
+  }
+}
+
+function getWompiApiBase(publicKey) {
+  return String(publicKey || '').startsWith('pub_test_')
+    ? 'https://sandbox.wompi.co'
+    : 'https://production.wompi.co';
+}
+
+export async function getWompiTransactionById(req, res) {
+  const transactionId = String(req.params.transactionId || '').trim();
+  const settings = getWompiCheckoutSettings(req);
+
+  if (!transactionId) {
+    return res.status(400).json({ error: 'El identificador de la transacción es obligatorio.' });
+  }
+
+  if (!settings.publicKey) {
+    return res.status(503).json({ error: 'Configura WOMPI_PUBLIC_KEY en el backend para validar transacciones.' });
+  }
+
+  try {
+    const apiBase = getWompiApiBase(settings.publicKey);
+    const response = await fetch(`${apiBase}/v1/transactions/${encodeURIComponent(transactionId)}`);
+
+    if (response.status === 404) {
+      return res.status(404).json({ error: 'No se encontró la transacción en Wompi.' });
+    }
+
+    const payload = await response.json().catch(() => null);
+
+    if (!response.ok || !payload?.data) {
+      return res.status(502).json({ error: 'No fue posible validar la transacción con Wompi.' });
+    }
+
+    const tx = payload.data;
+
+    return res.json({
+      id: String(tx.id || transactionId),
+      reference: String(tx.reference || '').trim(),
+      currency: String(tx.currency || settings.currency || STORE_CURRENCY).trim().toUpperCase() || STORE_CURRENCY,
+      amountInCents: Number(tx.amount_in_cents || 0),
+      status: normalizeWompiTransactionStatus(tx.status),
+      rawStatus: String(tx.status || '').trim(),
+      finalizedAt: tx.finalized_at || null,
+    });
+  } catch {
+    return res.status(502).json({ error: 'No fue posible conectar con Wompi para validar el pago.' });
   }
 }

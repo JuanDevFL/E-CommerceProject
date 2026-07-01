@@ -1,8 +1,89 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
-import { createGuestOrder, createMyOrder, fetchMyAddresses, fetchWompiWidgetConfig } from '../api';
+import { createGuestOrder, createMyOrder, fetchMyAddresses, fetchWompiTransaction, fetchWompiWidgetConfig } from '../api';
 import { FREE_SHIPPING_THRESHOLD_COP, STANDARD_SHIPPING_FEE_COP, STORE_CURRENCY, formatPrice, normalizePrice } from '../utils/pricing.js';
 import './CheckoutPage.css';
+
+const WOMPI_CONTEXT_KEY_PREFIX = 'azami-wompi-context:';
+const WOMPI_SYNC_KEY_PREFIX = 'azami-wompi-sync:';
+
+function wompiContextKey(reference) {
+  return `${WOMPI_CONTEXT_KEY_PREFIX}${reference}`;
+}
+
+function wompiSyncKey(transactionId) {
+  return `${WOMPI_SYNC_KEY_PREFIX}${transactionId}`;
+}
+
+function saveWompiContext(reference, context) {
+  if (typeof window === 'undefined' || !reference) return;
+
+  const payload = JSON.stringify({ ...context, savedAt: Date.now() });
+  const key = wompiContextKey(reference);
+  window.sessionStorage.setItem(key, payload);
+  window.localStorage.setItem(key, payload);
+}
+
+function readWompiContext(reference) {
+  if (typeof window === 'undefined' || !reference) return null;
+  const key = wompiContextKey(reference);
+  const raw = window.sessionStorage.getItem(key) || window.localStorage.getItem(key);
+  if (!raw) return null;
+
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+function readLatestWompiContext() {
+  if (typeof window === 'undefined') return null;
+
+  const contexts = [];
+
+  const collect = (storage) => {
+    for (let i = 0; i < storage.length; i += 1) {
+      const key = storage.key(i);
+      if (!key || !key.startsWith(WOMPI_CONTEXT_KEY_PREFIX)) continue;
+
+      const raw = storage.getItem(key);
+      if (!raw) continue;
+
+      try {
+        const parsed = JSON.parse(raw);
+        contexts.push(parsed);
+      } catch {
+        // Ignore malformed payloads.
+      }
+    }
+  };
+
+  collect(window.sessionStorage);
+  collect(window.localStorage);
+
+  if (!contexts.length) return null;
+
+  contexts.sort((a, b) => Number(b.savedAt || 0) - Number(a.savedAt || 0));
+  return contexts[0] || null;
+}
+
+function clearWompiContext(reference) {
+  if (typeof window === 'undefined' || !reference) return;
+  const key = wompiContextKey(reference);
+  window.sessionStorage.removeItem(key);
+  window.localStorage.removeItem(key);
+}
+
+function isWompiSynced(transactionId) {
+  if (typeof window === 'undefined' || !transactionId) return false;
+  return window.sessionStorage.getItem(wompiSyncKey(transactionId)) === '1';
+}
+
+function markWompiSynced(transactionId) {
+  if (typeof window === 'undefined' || !transactionId) return;
+  window.sessionStorage.setItem(wompiSyncKey(transactionId), '1');
+}
 
 const initialGuestForm = {
   nombre: '',
@@ -68,63 +149,49 @@ function toWompiCountryCode(country) {
   return normalized.slice(0, 2);
 }
 
+function WompiSandboxTestGuide() {
+  return (
+    <div className="checkout-sandbox-guide" role="note" aria-label="Datos de prueba Wompi Sandbox">
+      <p className="checkout-sandbox-title">Datos de prueba Wompi Sandbox</p>
+      <p className="checkout-sandbox-subtitle">Usa estos datos oficiales en el widget para simular estados.</p>
+
+      <div className="checkout-sandbox-grid">
+        <div>
+          <strong>Tarjetas</strong>
+          <ul>
+            <li>4242 4242 4242 4242: APPROVED</li>
+            <li>4111 1111 1111 1111: DECLINED</li>
+            <li>Fecha futura y CVC de 3 digitos</li>
+          </ul>
+        </div>
+
+        <div>
+          <strong>Nequi</strong>
+          <ul>
+            <li>3991111111: APPROVED</li>
+            <li>3992222222: DECLINED</li>
+          </ul>
+        </div>
+
+        <div>
+          <strong>PSE (Widget)</strong>
+          <ul>
+            <li>Banco que aprueba: APPROVED</li>
+            <li>Banco que rechaza: DECLINED</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function WompiSandboxWidget({ config, errorMessage, customerData, shippingAddress }) {
-  const containerRef = useRef(null);
   const amountInCents = Number(config?.amountInCents || 0);
   const reference = config?.reference || '';
   const currency = config?.currency || STORE_CURRENCY;
   const publicKey = config?.publicKey || '';
   const signatureIntegrity = config?.signatureIntegrity || '';
   const redirectUrl = config?.redirectUrl || '';
-
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container || !publicKey || !signatureIntegrity || amountInCents <= 0 || !reference) return undefined;
-
-    container.innerHTML = '';
-    const script = document.createElement('script');
-    script.src = 'https://checkout.wompi.co/widget.js';
-    script.async = true;
-    script.setAttribute('data-render', 'button');
-    script.setAttribute('data-public-key', publicKey);
-    script.setAttribute('data-currency', currency);
-    script.setAttribute('data-amount-in-cents', String(amountInCents));
-    script.setAttribute('data-reference', reference);
-    script.setAttribute('data-signature:integrity', signatureIntegrity);
-    if (redirectUrl) {
-      script.setAttribute('data-redirect-url', redirectUrl);
-    }
-    if (customerData?.email) {
-      script.setAttribute('data-customer-data:email', customerData.email);
-    }
-    if (customerData?.fullName) {
-      script.setAttribute('data-customer-data:full-name', customerData.fullName);
-    }
-    if (customerData?.phoneNumber) {
-      script.setAttribute('data-customer-data:phone-number', customerData.phoneNumber);
-      script.setAttribute('data-customer-data:phone-number-prefix', '+57');
-    }
-    if (shippingAddress?.addressLine1) {
-      script.setAttribute('data-shipping-address:address-line-1', shippingAddress.addressLine1);
-      script.setAttribute('data-shipping-address:country', toWompiCountryCode(shippingAddress.country));
-      script.setAttribute('data-shipping-address:city', shippingAddress.city || '');
-      script.setAttribute('data-shipping-address:phone-number', shippingAddress.phoneNumber || '');
-      script.setAttribute('data-shipping-address:region', shippingAddress.region || '');
-      script.setAttribute('data-shipping-address:name', shippingAddress.name || '');
-      if (shippingAddress?.postalCode) {
-        script.setAttribute('data-shipping-address:postal-code', shippingAddress.postalCode);
-      }
-      if (shippingAddress?.addressLine2) {
-        script.setAttribute('data-shipping-address:address-line-2', shippingAddress.addressLine2);
-      }
-    }
-
-    container.appendChild(script);
-
-    return () => {
-      container.innerHTML = '';
-    };
-  }, [amountInCents, currency, publicKey, reference, redirectUrl, signatureIntegrity]);
 
   if (errorMessage) {
     return (
@@ -142,7 +209,50 @@ function WompiSandboxWidget({ config, errorMessage, customerData, shippingAddres
     );
   }
 
-  return <div ref={containerRef} className="checkout-wompi-container" />;
+  const params = new URLSearchParams();
+  params.set('mode', 'widget');
+  params.set('public-key', publicKey);
+  params.set('currency', currency);
+  params.set('amount-in-cents', String(amountInCents));
+  params.set('reference', reference);
+  params.set('widget-operation', 'purchase');
+  params.set('signature:integrity', signatureIntegrity);
+  if (redirectUrl) {
+    params.set('redirect-url', redirectUrl);
+  }
+
+  const customerEmail = String(customerData?.email || '').trim();
+  const customerFullName = String(customerData?.fullName || '').trim();
+  const customerPhoneNumber = String(customerData?.phoneNumber || '').trim();
+  if (customerEmail) params.set('customer-data:email', customerEmail);
+  if (customerFullName) params.set('customer-data:full-name', customerFullName);
+  if (customerPhoneNumber) {
+    params.set('customer-data:phone-number', customerPhoneNumber);
+    params.set('customer-data:phone-number-prefix', '+57');
+  }
+
+  const addressLine1 = String(shippingAddress?.addressLine1 || '').trim();
+  if (addressLine1) {
+    params.set('shipping-address:address-line-1', addressLine1);
+    params.set('shipping-address:country', toWompiCountryCode(shippingAddress?.country));
+    params.set('shipping-address:city', String(shippingAddress?.city || '').trim());
+    params.set('shipping-address:phone-number', String(shippingAddress?.phoneNumber || '').trim());
+    params.set('shipping-address:region', String(shippingAddress?.region || '').trim());
+    params.set('shipping-address:name', String(shippingAddress?.name || '').trim());
+
+    const postalCode = String(shippingAddress?.postalCode || '').trim();
+    const addressLine2 = String(shippingAddress?.addressLine2 || '').trim();
+    if (postalCode) params.set('shipping-address:postal-code', postalCode);
+    if (addressLine2) params.set('shipping-address:address-line-2', addressLine2);
+  }
+
+  const checkoutUrl = `https://checkout.wompi.co/p/?${params.toString()}`;
+
+  return (
+    <a href={checkoutUrl} className="checkout-btn" target="_self" rel="noreferrer">
+      Paga con <strong>Wompi</strong>
+    </a>
+  );
 }
 
 export default function CheckoutPage({ user, cartItems, onBackToCatalog, onOrderCreated }) {
@@ -155,6 +265,8 @@ export default function CheckoutPage({ user, cartItems, onBackToCatalog, onOrder
   const [createdOrder, setCreatedOrder] = useState(null);
   const [wompiWidgetConfig, setWompiWidgetConfig] = useState(null);
   const [wompiWidgetError, setWompiWidgetError] = useState('');
+  const [wompiReturn, setWompiReturn] = useState(null);
+  const wompiSyncStartedRef = useRef(false);
   const [guestForm, setGuestForm] = useState(() => ({
     ...initialGuestForm,
     nombre: user?.name || '',
@@ -285,6 +397,20 @@ export default function CheckoutPage({ user, cartItems, onBackToCatalog, onOrder
         postalCode: selectedAddress.codigo_postal,
       }
     : null;
+  const wompiPrereqMessage = user
+    ? (!selectedAddress || !wompiCustomerData.email || !wompiCustomerData.fullName || !wompiCustomerData.phoneNumber
+      ? 'Completa tus datos de perfil y selecciona una dirección para habilitar Wompi.'
+      : '')
+    : (!guestFieldsCompleted
+      ? 'Completa tus datos de contacto, envío y autorizaciones para habilitar Wompi.'
+      : '');
+
+  const wompiReturnTransactionId = useMemo(() => {
+    if (typeof window === 'undefined') return '';
+    const params = new URLSearchParams(window.location.search);
+    return String(params.get('id') || params.get('transaction_id') || '').trim();
+  }, []);
+  const hasWompiReturnTransaction = Boolean(wompiReturnTransactionId);
 
   useEffect(() => {
     let active = true;
@@ -316,6 +442,164 @@ export default function CheckoutPage({ user, cartItems, onBackToCatalog, onOrder
       active = false;
     };
   }, [amountInCents, canCheckout, reference]);
+
+  useEffect(() => {
+    if (!wompiWidgetConfig?.reference || !Number.isInteger(amountInCents) || amountInCents <= 0 || hasUnsupportedItems) {
+      return;
+    }
+
+    const filteredItems = persistableItems
+      .filter((item) => item.productId && item.quantity > 0)
+      .map((item) => ({ productId: item.productId, quantity: item.quantity }));
+
+    if (!filteredItems.length) {
+      return;
+    }
+
+    const context = user
+      ? {
+          mode: 'registered',
+          reference: wompiWidgetConfig.reference,
+          amountInCents,
+          items: filteredItems,
+          addressId: Number(selectedAddressId) || null,
+        }
+      : {
+          mode: 'guest',
+          reference: wompiWidgetConfig.reference,
+          amountInCents,
+          items: filteredItems,
+          customer: {
+            nombre: guestForm.nombre,
+            email: guestForm.email,
+            telefono: guestForm.telefono,
+          },
+          address: {
+            alias: guestForm.alias,
+            nombre_receptor: guestForm.nombre_receptor,
+            telefono: guestForm.telefono,
+            calle: guestForm.calle,
+            ciudad: guestForm.ciudad,
+            estado: guestForm.estado,
+            codigo_postal: guestForm.codigo_postal,
+            pais: guestForm.pais,
+          },
+        };
+
+    saveWompiContext(wompiWidgetConfig.reference, context);
+  }, [
+    amountInCents,
+    guestForm.alias,
+    guestForm.calle,
+    guestForm.ciudad,
+    guestForm.codigo_postal,
+    guestForm.email,
+    guestForm.estado,
+    guestForm.nombre,
+    guestForm.nombre_receptor,
+    guestForm.pais,
+    guestForm.telefono,
+    hasUnsupportedItems,
+    persistableItems,
+    selectedAddressId,
+    user,
+    wompiWidgetConfig,
+  ]);
+
+  useEffect(() => {
+    if (!wompiReturnTransactionId || wompiSyncStartedRef.current) {
+      return;
+    }
+
+    wompiSyncStartedRef.current = true;
+
+    function cleanReturnUrl() {
+      if (typeof window !== 'undefined') {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    }
+
+    async function syncApprovedTransaction() {
+      setWompiReturn({ status: 'syncing', transactionId: wompiReturnTransactionId });
+      setCheckoutError('');
+
+      try {
+        const transaction = await fetchWompiTransaction(wompiReturnTransactionId);
+
+        if (transaction.status !== 'approved') {
+          setWompiReturn({
+            status: 'error',
+            transactionId: wompiReturnTransactionId,
+            transaction,
+            message: `Wompi reporta la transacción como ${transaction.rawStatus || transaction.status}.`,
+          });
+          return;
+        }
+
+        if (isWompiSynced(wompiReturnTransactionId)) {
+          cleanReturnUrl();
+          setWompiReturn({ status: 'already', transactionId: wompiReturnTransactionId, transaction });
+          return;
+        }
+
+        if (!transaction.reference) {
+          throw new Error('Wompi no devolvió referencia para esta transacción.');
+        }
+
+        let context = readWompiContext(transaction.reference);
+
+        if (!context) {
+          context = readLatestWompiContext();
+        }
+
+        if (!context) {
+          throw new Error('No encontramos el contexto del checkout para esta referencia. Intenta de nuevo desde el checkout.');
+        }
+
+        if (Number(transaction.amountInCents) !== Number(context.amountInCents)) {
+          throw new Error('El monto aprobado en Wompi no coincide con el checkout local.');
+        }
+
+        const payload = {
+          reference: transaction.reference,
+          paymentProvider: 'wompi',
+          paymentMethod: 'widget',
+          paymentStatus: 'approved',
+          items: context.items,
+        };
+
+        const order = context.mode === 'registered'
+          ? await createMyOrder({ ...payload, addressId: Number(context.addressId) || 0 })
+          : await createGuestOrder({
+              ...payload,
+              customer: context.customer,
+              address: context.address,
+            });
+
+        markWompiSynced(wompiReturnTransactionId);
+        clearWompiContext(transaction.reference);
+        setCreatedOrder(order);
+        onOrderCreated?.(order, { redirectToAccount: false });
+        cleanReturnUrl();
+        setWompiReturn({ status: 'success', transactionId: wompiReturnTransactionId, transaction, order });
+      } catch (error) {
+        if (String(error?.message || '').toLowerCase().includes('ya existe')) {
+          markWompiSynced(wompiReturnTransactionId);
+          cleanReturnUrl();
+          setWompiReturn({ status: 'already', transactionId: wompiReturnTransactionId });
+          return;
+        }
+
+        setWompiReturn({
+          status: 'error',
+          transactionId: wompiReturnTransactionId,
+          message: error.message || 'No se pudo sincronizar el pago de Wompi con la base de datos.',
+        });
+      }
+    }
+
+    syncApprovedTransaction();
+  }, [onOrderCreated, user, wompiReturnTransactionId]);
 
   function handleGuestFormChange(event) {
     const { name, value, type, checked } = event.target;
@@ -404,6 +688,93 @@ export default function CheckoutPage({ user, cartItems, onBackToCatalog, onOrder
     }
   }
 
+  if (wompiReturn) {
+    const returnTx = wompiReturn.transaction;
+    const returnOrder = wompiReturn.order || createdOrder;
+    const returnReference = returnTx?.reference || returnOrder?.referencia_pago || '—';
+    const returnAmount = returnTx?.amountInCents != null
+      ? formatPrice(Number(returnTx.amountInCents) / 100)
+      : returnOrder?.total != null
+        ? formatPrice(returnOrder.total)
+        : null;
+    const isSyncing = wompiReturn.status === 'syncing';
+    const isError = wompiReturn.status === 'error';
+    const isSuccess = wompiReturn.status === 'success' || wompiReturn.status === 'already';
+
+    return (
+      <main className="checkout-page">
+        <div className="checkout-shell">
+          <section className="checkout-success-card checkout-card">
+            <p className="checkout-kicker">
+              {isSyncing ? 'Procesando pago' : isError ? 'Pago sin confirmar' : 'Pago aprobado'}
+            </p>
+            <h1 className="checkout-title">
+              {isSyncing
+                ? 'Estamos confirmando tu pago con Wompi'
+                : isError
+                  ? 'No pudimos confirmar tu pago'
+                  : wompiReturn.status === 'already'
+                    ? 'Tu pago ya estaba registrado'
+                    : '¡Gracias! Tu pago fue aprobado'}
+            </h1>
+            <p className="checkout-subtitle">
+              {isSyncing
+                ? 'Validando la transacción de Wompi y guardando tu orden en nuestra base de datos...'
+                : isError
+                  ? (wompiReturn.message || 'Ocurrió un problema al sincronizar el pago.')
+                  : wompiReturn.status === 'already'
+                    ? 'Ya teníamos registrada esta compra, así que no la duplicamos. Puedes consultar el detalle cuando quieras.'
+                    : 'Confirmamos tu pago con Wompi y registramos tu pedido correctamente.'}
+            </p>
+
+            {isSyncing ? (
+              <div className="checkout-warning">Validando pago de Wompi y guardando la orden...</div>
+            ) : null}
+
+            {isSuccess ? (
+              <div className="checkout-success-grid">
+                <div>
+                  <span className="checkout-muted">Referencia</span>
+                  <strong>{returnReference}</strong>
+                  <p className="checkout-footnote">Transacción {wompiReturn.transactionId}</p>
+                </div>
+                <div>
+                  <span className="checkout-muted">Total pagado</span>
+                  <strong>{returnAmount || '—'}</strong>
+                  <p className="checkout-footnote">Estado: aprobado</p>
+                </div>
+                {returnOrder ? (
+                  <div>
+                    <span className="checkout-muted">Pedido</span>
+                    <strong>#{returnOrder.id ?? returnOrder.orden_id ?? returnReference}</strong>
+                    <p className="checkout-footnote">{returnOrder.estado ? `Estado: ${returnOrder.estado}` : 'Registrado en tu cuenta'}</p>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+
+            {!isSyncing ? (
+              <div className="checkout-actions">
+                <button type="button" className="checkout-btn" onClick={onBackToCatalog}>
+                  Volver al catálogo
+                </button>
+                {user ? (
+                  <Link to="/mi-cuenta" className="checkout-btn checkout-btn-secondary">
+                    Ver mis pedidos
+                  </Link>
+                ) : (
+                  <Link to="/auth" className="checkout-btn checkout-btn-secondary">
+                    Crear cuenta
+                  </Link>
+                )}
+              </div>
+            ) : null}
+          </section>
+        </div>
+      </main>
+    );
+  }
+
   if (createdOrder && !user) {
     return (
       <main className="checkout-page">
@@ -445,7 +816,7 @@ export default function CheckoutPage({ user, cartItems, onBackToCatalog, onOrder
     );
   }
 
-  if (!canCheckout) {
+  if (!canCheckout && !hasWompiReturnTransaction) {
     return <Navigate to="/catalogo" replace />;
   }
 
@@ -622,10 +993,12 @@ export default function CheckoutPage({ user, cartItems, onBackToCatalog, onOrder
 
                 <WompiSandboxWidget
                   config={wompiWidgetConfig}
-                  errorMessage={wompiWidgetError}
+                  errorMessage={wompiPrereqMessage || wompiWidgetError}
                   customerData={wompiCustomerData}
                   shippingAddress={wompiShippingAddress}
                 />
+
+                <WompiSandboxTestGuide />
 
                 <button type="button" className="checkout-btn checkout-btn-whatsapp" onClick={handleWhatsappOrder}>
                   Enviar pedido por WhatsApp
