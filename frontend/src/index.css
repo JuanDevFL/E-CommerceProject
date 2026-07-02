@@ -2763,7 +2763,7 @@ body::-webkit-scrollbar-thumb {
 }
 
 .about-hero-title {
-  font-size: 3.5rem;
+  font-size: clamp(2rem, 8vw, 3.5rem);
   font-weight: 600;
   letter-spacing: 0.25em;
   color: var(--color-heading);
@@ -3003,3 +3003,99 @@ button.submenu-link {
   max-width: 32rem;
   margin-inline: auto;
 }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Refinamiento responsive — optimización para celular
+   Aditivo: no altera el comportamiento existente en escritorio/tablet.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* Red de seguridad global: nada debe desbordar horizontalmente en móvil */
+img,
+svg,
+video,
+canvas,
+iframe {
+  max-width: 100%;
+  height: auto;
+}
+
+table {
+  max-width: 100%;
+}
+
+/* Evita zoom automático de iOS al enfocar inputs (fuente < 16px) */
+@media (max-width: 600px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
+  /* Botones y controles con área táctil cómoda */
+  .nav-icon-btn,
+  .btn-theme-toggle,
+  .btn-cart-mobile {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  /* Detalle de producto: media menos alto y acciones a lo ancho */
+  .product-detail-media {
+    min-height: 18rem;
+    padding: 0.85rem;
+  }
+
+  .product-detail-title {
+    font-size: clamp(1.5rem, 6.5vw, 2rem);
+  }
+
+  .product-detail-actions {
+    width: 100%;
+  }
+
+  .product-detail-actions > * {
+    flex: 1 1 100%;
+  }
+
+  /* Secciones con padding más compacto en móvil */
+  .about-hero {
+    padding: 2.5rem 1rem 2rem;
+  }
+
+  .about-section {
+    padding: 2.25rem 1rem;
+  }
+
+  .legal-page,
+  .wishlist-page {
+    padding-inline: 1rem;
+  }
+}
+
+/* Teléfonos estrechos */
+@media (max-width: 480px) {
+  .catalog-page-title {
+    font-size: clamp(1.6rem, 8vw, 2.25rem);
+  }
+
+  .about-hero-title {
+    letter-spacing: 0.12em;
+  }
+
+  /* Tarjetas de producto: una columna y contenido apilado */
+  .product-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Modales y paneles a pantalla completa cómoda */
+  .announcement-modal {
+    width: 100%;
+  }
+
+  /* Filas de resumen/acciones que deben apilarse en pantallas muy pequeñas */
+  .product-detail-meta {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+}
+
