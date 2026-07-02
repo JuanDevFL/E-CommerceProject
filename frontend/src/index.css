@@ -3218,22 +3218,17 @@ table {
   }
 
   .fullscreen-menu-panel.lg\:hidden {
-    background: var(--color-background-alt);
+    padding: calc(env(safe-area-inset-top, 0px) + 0.7rem) 1rem calc(env(safe-area-inset-bottom, 0px) + 1.1rem);
+    background-color: var(--color-background-alt) !important;
+    background-image: none !important;
     backdrop-filter: none;
-    isolation: isolate;
+    opacity: 1 !important;
   }
 
-  .fullscreen-menu-panel.lg\:hidden::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    z-index: 0;
-    background: var(--color-background-alt);
-  }
-
-  .fullscreen-menu-panel.lg\:hidden > * {
-    position: relative;
-    z-index: 1;
+  .fullscreen-menu-panel.lg\:hidden .fullscreen-panel-header {
+    min-height: 3.15rem;
+    padding: 0.25rem 0 0.8rem;
+    background: var(--color-background-alt) !important;
   }
 
   .fullscreen-menu-panel.lg\:hidden .menu-main-plus {
