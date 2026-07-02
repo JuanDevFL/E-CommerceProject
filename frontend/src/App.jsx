@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
-import { fetchActiveAnnouncements, fetchProductos, logoutApi } from './api';
+import { fetchActiveAnnouncements, fetchMyProfile, fetchProductos, logoutApi } from './api';
 import AnnouncementPopup from './components/AnnouncementPopup.jsx';
 import ConsentBanner from './components/ConsentBanner.jsx';
 import Navbar from './components/Navbar.jsx';
@@ -426,6 +426,44 @@ function App() {
     window.addEventListener('azami-token-refreshed', onTokenRefreshed);
     return () => window.removeEventListener('azami-token-refreshed', onTokenRefreshed);
   }, []);
+
+  // Verifica la sesión contra el backend al arrancar y reconcilia la identidad
+  // real (nombre, correo, rol) para evitar cualquier estado mezclado o desfasado.
+  useEffect(() => {
+    if (!user?.token) return undefined;
+
+    let active = true;
+
+    fetchMyProfile()
+      .then((profile) => {
+        if (!active || !profile?.id) return;
+        setUser((prev) => {
+          if (!prev) return prev;
+          const reconciled = {
+            ...prev,
+            id: profile.id,
+            name: profile.nombre || prev.name,
+            email: profile.email || prev.email,
+            role: profile.rol || prev.role,
+          };
+          const changed = reconciled.id !== prev.id
+            || reconciled.name !== prev.name
+            || reconciled.email !== prev.email
+            || reconciled.role !== prev.role;
+          if (!changed) return prev;
+          localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(reconciled));
+          return reconciled;
+        });
+      })
+      .catch(() => {
+        // Un 401 dispara 'azami-session-expired' y cierra sesión automáticamente.
+      });
+
+    return () => {
+      active = false;
+    };
+    // Solo al montar o cuando cambia la identidad del token.
+  }, [user?.token]);
 
   const handleAuthSuccess = (nextUser) => {
     const normalizedUser = normalizeUserSession({
