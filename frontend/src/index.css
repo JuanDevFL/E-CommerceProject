@@ -3195,6 +3195,19 @@ table {
 
 /* Navbar móvil: mostrar opciones siempre visibles dentro del menú */
 @media (max-width: 1023px) {
+  .fullscreen-menu-panel,
+  .user-panel,
+  .cart-panel {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw;
+    height: 100dvh;
+    min-height: 100dvh;
+    max-height: 100dvh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
   .fullscreen-menu-panel.lg\:hidden .menu-main-plus {
     display: none;
   }
