@@ -1775,8 +1775,12 @@ body {
   justify-content: space-between;
   gap: 0.75rem;
   padding: 0.35rem 0 1rem;
-  background: color-mix(in srgb, var(--color-background) 95%, #000000 5%);
+  background: color-mix(in srgb, var(--color-panel) 94%, var(--color-surface) 6%);
   border-bottom: 1px solid color-mix(in srgb, var(--color-border) 62%, transparent 38%);
+}
+
+.fullscreen-menu-panel .fullscreen-panel-header {
+  background: var(--color-surface);
 }
 
 .panel-close-button {
@@ -3195,6 +3199,11 @@ table {
 
 /* Navbar móvil: mostrar opciones siempre visibles dentro del menú */
 @media (max-width: 1023px) {
+  .navbar.is-menu-open > .navbar-brand,
+  .navbar.is-menu-open > .navbar-mobile-actions {
+    visibility: hidden;
+  }
+
   .fullscreen-menu-panel,
   .user-panel,
   .cart-panel {
@@ -3206,6 +3215,25 @@ table {
     max-height: 100dvh;
     overflow-y: auto;
     overscroll-behavior: contain;
+  }
+
+  .fullscreen-menu-panel.lg\:hidden {
+    background: var(--color-background-alt);
+    backdrop-filter: none;
+    isolation: isolate;
+  }
+
+  .fullscreen-menu-panel.lg\:hidden::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    background: var(--color-background-alt);
+  }
+
+  .fullscreen-menu-panel.lg\:hidden > * {
+    position: relative;
+    z-index: 1;
   }
 
   .fullscreen-menu-panel.lg\:hidden .menu-main-plus {

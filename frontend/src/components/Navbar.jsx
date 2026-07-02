@@ -163,7 +163,7 @@ function Navbar({
   ];
 
   return (
-    <nav className="navbar relative flex w-full items-center py-3">
+    <nav className={`navbar relative flex w-full items-center py-3 ${isOpen ? 'is-menu-open' : ''}`}>
       <Link to="/" className="navbar-brand min-w-0 flex items-center gap-2 sm:gap-3" aria-label="Ir a la página principal">
         <img src={logoNavBar} alt="Logo Azami" className="brand-logo" />
         <span className="text-xl font-semibold uppercase tracking-[0.28em] text-primary sm:text-2xl">AZAMI</span>
