@@ -3213,18 +3213,24 @@ table {
     padding: calc(env(safe-area-inset-top, 0px) + 0.9rem) 1rem calc(env(safe-area-inset-bottom, 0px) + 1.1rem);
   }
 
-  .fullscreen-menu-panel.lg\:hidden {
+  .fullscreen-menu-panel.lg\:hidden,
+  .user-panel,
+  .cart-panel {
     background-color: var(--color-background-alt) !important;
     background-image: none !important;
     backdrop-filter: none;
   }
 
-  .fullscreen-menu-panel.lg\:hidden .fullscreen-panel-header {
+  .fullscreen-menu-panel.lg\:hidden .fullscreen-panel-header,
+  .user-panel .fullscreen-panel-header,
+  .cart-panel .fullscreen-panel-header {
     background: var(--color-background-alt);
   }
 
   /* Botón Cerrar del panel: siempre visible y accesible */
-  .fullscreen-menu-panel.lg\:hidden .panel-close-button {
+  .fullscreen-menu-panel.lg\:hidden .panel-close-button,
+  .user-panel .panel-close-button,
+  .cart-panel .panel-close-button {
     position: relative;
     z-index: 3;
   }
