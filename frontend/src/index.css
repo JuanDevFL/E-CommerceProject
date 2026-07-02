@@ -3199,9 +3199,9 @@ table {
 
 /* Navbar móvil: mostrar opciones siempre visibles dentro del menú */
 @media (max-width: 1023px) {
-  .navbar.is-menu-open > .navbar-brand,
-  .navbar.is-menu-open > .navbar-mobile-actions {
-    visibility: hidden;
+  .navbar-mobile-actions {
+    position: relative;
+    z-index: 64;
   }
 
   .fullscreen-menu-panel,
@@ -3218,11 +3218,20 @@ table {
   }
 
   .fullscreen-menu-panel.lg\:hidden {
-    padding: calc(env(safe-area-inset-top, 0px) + 0.7rem) 1rem calc(env(safe-area-inset-bottom, 0px) + 1.1rem);
+    top: calc(env(safe-area-inset-top, 0px) + 4.25rem) !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    width: 100vw;
+    height: auto;
+    min-height: 0;
+    max-height: none;
+    padding: 0.7rem 1rem calc(env(safe-area-inset-bottom, 0px) + 1.1rem);
     background-color: var(--color-background-alt) !important;
     background-image: none !important;
     backdrop-filter: none;
     opacity: 1 !important;
+    border-top: 1px solid color-mix(in srgb, var(--color-border) 58%, transparent 42%);
   }
 
   .fullscreen-menu-panel.lg\:hidden .fullscreen-panel-header {
