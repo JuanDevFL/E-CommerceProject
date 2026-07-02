@@ -874,13 +874,13 @@ function AdminDashboardPage({ user, onProductCreated }) {
 
                           return (
                           <tr key={order.id} className="admin-order-row" onClick={() => handleOrderClick(order.id)}>
-                            <td><strong>{order.id}</strong></td>
-                            <td>{order.cliente}</td>
-                            <td><small>{order.cliente_email || '—'}</small></td>
-                            <td>{formatCurrency(order.total)}</td>
-                            <td><span className={`admin-status-badge is-${normalizedStatus}`}>{getOrderStatusLabel(order.estado)}</span></td>
-                            <td><small>{formatDate(order.creado_at)}</small></td>
-                            <td>
+                            <td data-label="#"><strong>{order.id}</strong></td>
+                            <td data-label="Cliente">{order.cliente}</td>
+                            <td data-label="Email"><small>{order.cliente_email || '—'}</small></td>
+                            <td data-label="Total">{formatCurrency(order.total)}</td>
+                            <td data-label="Estado"><span className={`admin-status-badge is-${normalizedStatus}`}>{getOrderStatusLabel(order.estado)}</span></td>
+                            <td data-label="Fecha"><small>{formatDate(order.creado_at)}</small></td>
+                            <td data-label="Acciones">
                               <button
                                 type="button"
                                 className="admin-secondary-button admin-edit-btn"
@@ -1130,15 +1130,15 @@ function AdminDashboardPage({ user, onProductCreated }) {
                       <tbody>
                         {paginatedProducts.map((product) => (
                           <tr key={product.id}>
-                            <td>
+                            <td data-label="Producto">
                               <strong>{product.nombre}</strong>
                               <small>{product.etiqueta || 'Online'}</small>
                             </td>
-                            <td>{product.categoria}</td>
-                            <td>{product.tono}</td>
-                            <td>{formatInteger(product.stock)}</td>
-                            <td>{formatCurrency(product.precio)}</td>
-                            <td>
+                            <td data-label="Categoría">{product.categoria}</td>
+                            <td data-label="Tono">{product.tono}</td>
+                            <td data-label="Stock">{formatInteger(product.stock)}</td>
+                            <td data-label="Precio">{formatCurrency(product.precio)}</td>
+                            <td data-label="Acciones">
                               <button
                                 type="button"
                                 className="admin-secondary-button admin-edit-btn"
@@ -1474,7 +1474,7 @@ function AdminDashboardPage({ user, onProductCreated }) {
                       <tbody>
                         {orderDetail.items.map((item) => (
                           <tr key={item.id}>
-                            <td>
+                            <td data-label="Producto">
                               <div className="admin-order-item-cell">
                                 {item.imagen_url && (
                                   <img src={item.imagen_url} alt={item.nombre} className="admin-order-item-img" loading="lazy" referrerPolicy="no-referrer" />
@@ -1482,17 +1482,17 @@ function AdminDashboardPage({ user, onProductCreated }) {
                                 <strong>{item.nombre || 'Producto eliminado'}</strong>
                               </div>
                             </td>
-                            <td>{item.categoria || '—'}</td>
-                            <td>{item.cantidad}</td>
-                            <td>{formatCurrency(item.precio)}</td>
-                            <td>{formatCurrency(item.precio * item.cantidad)}</td>
+                            <td data-label="Categoría">{item.categoria || '—'}</td>
+                            <td data-label="Cantidad">{item.cantidad}</td>
+                            <td data-label="Precio unit.">{formatCurrency(item.precio)}</td>
+                            <td data-label="Subtotal">{formatCurrency(item.precio * item.cantidad)}</td>
                           </tr>
                         ))}
                       </tbody>
                       <tfoot>
                         <tr>
-                          <td colSpan="4" style={{ textAlign: 'right', fontWeight: 600 }}>Total</td>
-                          <td><strong>{formatCurrency(orderDetail.total)}</strong></td>
+                          <td colSpan="4" data-label="Total" style={{ textAlign: 'right', fontWeight: 600 }}>Total</td>
+                          <td data-label="Monto total"><strong>{formatCurrency(orderDetail.total)}</strong></td>
                         </tr>
                       </tfoot>
                     </table>

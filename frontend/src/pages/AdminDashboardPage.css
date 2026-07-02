@@ -526,9 +526,87 @@
     height: clamp(13rem, 58vw, 16rem);
   }
 
+  .admin-products-table-wrap {
+    overflow: visible;
+  }
+
+  .admin-products-table,
+  .admin-products-table thead,
+  .admin-products-table tbody,
+  .admin-products-table tr,
   .admin-products-table th,
   .admin-products-table td {
-    min-width: 8rem;
+    display: block;
+    width: 100%;
+  }
+
+  .admin-products-table thead {
+    display: none;
+  }
+
+  .admin-products-table tbody tr {
+    margin-bottom: 0.85rem;
+    padding: 0.95rem 1rem;
+    border: 1px solid color-mix(in srgb, var(--color-border) 66%, transparent 34%);
+    border-radius: 1rem;
+    background: color-mix(in srgb, var(--color-background-alt) 82%, transparent 18%);
+  }
+
+  .admin-products-table tbody td {
+    display: grid;
+    gap: 0.2rem;
+    padding: 0.42rem 0;
+    border-bottom: none;
+    text-align: left;
+  }
+
+  .admin-products-table tbody td::before {
+    content: attr(data-label);
+    color: var(--color-muted);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+  }
+
+  .admin-products-table tbody td small {
+    margin-top: 0;
+  }
+
+  .admin-products-table tbody td:last-child {
+    padding-bottom: 0;
+  }
+
+  .admin-order-item-cell {
+    align-items: flex-start;
+  }
+
+  .admin-products-table tfoot tr {
+    display: grid;
+    gap: 0.25rem;
+  }
+
+  .admin-products-table tfoot td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.35rem 0;
+    border-top: none;
+  }
+
+  .admin-products-table tfoot td::before {
+    content: attr(data-label);
+    color: var(--color-muted);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+  }
+
+  .admin-products-table tfoot td:first-child {
+    justify-content: flex-start;
+  }
+
+  .admin-products-table tfoot td:last-child {
+    justify-content: space-between;
   }
 }
 

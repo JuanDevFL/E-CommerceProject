@@ -2288,7 +2288,6 @@ body::-webkit-scrollbar-thumb {
   .catalog-summary,
   .product-card-header,
   .product-card-footer,
-  .site-footer-inner,
   .cart-item,
   .cart-item-heading,
   .cart-summary-row,
@@ -2299,7 +2298,6 @@ body::-webkit-scrollbar-thumb {
   .catalog-header,
   .product-card-header,
   .product-card-footer,
-  .site-footer-inner,
   .cart-item,
   .cart-item-heading,
   .cart-summary-row,
@@ -2394,6 +2392,7 @@ body::-webkit-scrollbar-thumb {
 
   .site-footer-inner {
     grid-template-columns: 1fr;
+    row-gap: 0.9rem;
     justify-items: center;
     text-align: center;
   }
