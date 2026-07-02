@@ -39,6 +39,15 @@ function formatShortDate(value) {
   }).format(new Date(value));
 }
 
+function toLocalDateKey(value) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function buildRoleDrafts(users) {
   return Object.fromEntries(users.map((account) => [account.id, account.rol]));
 }
@@ -402,16 +411,31 @@ function AdminDashboardPage({ user, onProductCreated }) {
   const productTotalPages = Math.max(1, Math.ceil(filteredProducts.length / PAGE_SIZE));
   const paginatedProducts = filteredProducts.slice(productPage * PAGE_SIZE, (productPage + 1) * PAGE_SIZE);
 
+  const salesStatuses = new Set(['pago_confirmado', 'enviado', 'entregado']);
+
+  // La ventana termina en el día más reciente con actividad (o hoy) para que las
+  // ventas registradas hoy o con hora nocturna siempre queden dentro del rango.
   const now = new Date();
-  const salesWindowStart = new Date(now);
+  const latestOrderDate = recentOrders.reduce((latest, order) => {
+    const orderDate = new Date(order.creado_at);
+    if (Number.isNaN(orderDate.getTime())) return latest;
+    return orderDate > latest ? orderDate : latest;
+  }, now);
+
+  const salesWindowEnd = new Date(latestOrderDate);
+  salesWindowEnd.setHours(23, 59, 59, 999);
+
+  const salesWindowStart = new Date(salesWindowEnd);
   salesWindowStart.setHours(0, 0, 0, 0);
   salesWindowStart.setDate(salesWindowStart.getDate() - 29);
 
-  const salesStatuses = new Set(['pago_confirmado', 'enviado', 'entregado']);
   const lastMonthSales = recentOrders.filter((order) => {
     const normalizedStatus = normalizeOrderStatus(order.estado);
     const orderDate = new Date(order.creado_at);
-    return salesStatuses.has(normalizedStatus) && !Number.isNaN(orderDate.getTime()) && orderDate >= salesWindowStart;
+    return salesStatuses.has(normalizedStatus)
+      && !Number.isNaN(orderDate.getTime())
+      && orderDate >= salesWindowStart
+      && orderDate <= salesWindowEnd;
   });
 
   const pieStatusOrder = ['pago_confirmado', 'enviado', 'entregado'];
@@ -458,16 +482,15 @@ function AdminDashboardPage({ user, onProductCreated }) {
   const timelineDays = Array.from({ length: 30 }, (_, index) => {
     const date = new Date(salesWindowStart);
     date.setDate(salesWindowStart.getDate() + index);
-    const key = date.toISOString().slice(0, 10);
+    const key = toLocalDateKey(date);
     return { date, key, total: 0, orders: 0, products: 0 };
   });
 
   const timelineMap = new Map(timelineDays.map((day) => [day.key, day]));
 
   lastMonthSales.forEach((order) => {
-    const date = new Date(order.creado_at);
-    const key = date.toISOString().slice(0, 10);
-    const bucket = timelineMap.get(key);
+    const key = toLocalDateKey(order.creado_at);
+    const bucket = key ? timelineMap.get(key) : null;
 
     if (bucket) {
       bucket.total += Number(order.total || 0);
