@@ -3197,13 +3197,8 @@ table {
   }
 }
 
-/* Navbar móvil: mostrar opciones siempre visibles dentro del menú */
+/* Navbar móvil/tablet: panel de menú limpio y funcional */
 @media (max-width: 1023px) {
-  .navbar-mobile-actions {
-    position: relative;
-    z-index: 64;
-  }
-
   .fullscreen-menu-panel,
   .user-panel,
   .cart-panel {
@@ -3215,29 +3210,23 @@ table {
     max-height: 100dvh;
     overflow-y: auto;
     overscroll-behavior: contain;
+    padding: calc(env(safe-area-inset-top, 0px) + 0.9rem) 1rem calc(env(safe-area-inset-bottom, 0px) + 1.1rem);
   }
 
   .fullscreen-menu-panel.lg\:hidden {
-    top: calc(env(safe-area-inset-top, 0px) + 4.25rem) !important;
-    right: 0 !important;
-    bottom: 0 !important;
-    left: 0 !important;
-    width: 100vw;
-    height: auto;
-    min-height: 0;
-    max-height: none;
-    padding: 0.7rem 1rem calc(env(safe-area-inset-bottom, 0px) + 1.1rem);
     background-color: var(--color-background-alt) !important;
     background-image: none !important;
     backdrop-filter: none;
-    opacity: 1 !important;
-    border-top: 1px solid color-mix(in srgb, var(--color-border) 58%, transparent 42%);
   }
 
   .fullscreen-menu-panel.lg\:hidden .fullscreen-panel-header {
-    min-height: 3.15rem;
-    padding: 0.25rem 0 0.8rem;
-    background: var(--color-background-alt) !important;
+    background: var(--color-background-alt);
+  }
+
+  /* Botón Cerrar del panel: siempre visible y accesible */
+  .fullscreen-menu-panel.lg\:hidden .panel-close-button {
+    position: relative;
+    z-index: 3;
   }
 
   .fullscreen-menu-panel.lg\:hidden .menu-main-plus {
