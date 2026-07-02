@@ -3193,3 +3193,52 @@ table {
   }
 }
 
+/* Navbar móvil: mostrar opciones siempre visibles dentro del menú */
+@media (max-width: 1023px) {
+  .fullscreen-menu-panel.lg\:hidden .menu-main-plus {
+    display: none;
+  }
+
+  .fullscreen-menu-panel.lg\:hidden .menu-main-btn,
+  .fullscreen-menu-panel.lg\:hidden .menu-main-btn:hover,
+  .fullscreen-menu-panel.lg\:hidden .menu-main-btn:focus-visible,
+  .fullscreen-menu-panel.lg\:hidden .menu-item-group:hover .menu-main-btn,
+  .fullscreen-menu-panel.lg\:hidden .menu-item-group:focus-within .menu-main-btn,
+  .fullscreen-menu-panel.lg\:hidden .menu-item-group.is-open .menu-main-btn {
+    transform: none;
+    padding: 0.95rem 0.1rem 0.45rem;
+  }
+
+  .fullscreen-menu-panel.lg\:hidden .submenu-list {
+    display: grid;
+    gap: 0.28rem;
+    padding: 0 0 0.8rem;
+  }
+
+  .fullscreen-menu-panel.lg\:hidden .submenu-link {
+    padding: 0.62rem 0.7rem;
+    border-radius: 0.7rem;
+    background: color-mix(in srgb, var(--color-surface) 84%, transparent 16%);
+    border: 1px solid color-mix(in srgb, var(--color-border) 62%, transparent 38%);
+  }
+
+  .fullscreen-menu-panel.lg\:hidden .submenu-link:hover,
+  .fullscreen-menu-panel.lg\:hidden .submenu-link:focus-visible {
+    transform: none;
+    color: var(--color-hover-ink);
+    background: color-mix(in srgb, var(--color-surface-alt) 88%, transparent 12%);
+  }
+
+  .user-panel .panel-action-link {
+    margin-top: 0.45rem;
+    padding: 0.85rem 0.75rem;
+    border-radius: 0.75rem;
+    border: 1px solid color-mix(in srgb, var(--color-border) 58%, transparent 42%);
+    background: color-mix(in srgb, var(--color-surface) 82%, transparent 18%);
+  }
+
+  .user-panel .panel-action-link:first-child {
+    margin-top: 0;
+  }
+}
+
