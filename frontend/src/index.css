@@ -2120,8 +2120,8 @@ body {
 }
 
 .btn-menu-horizontal {
-  width: 48px;
-  height: 44px;
+  width: 2.75rem;
+  height: 2.75rem;
   border-radius: 9999px;
   display: inline-flex;
   flex-direction: column;
@@ -3031,12 +3031,24 @@ table {
     font-size: 16px;
   }
 
-  /* Botones y controles con área táctil cómoda */
-  .nav-icon-btn,
+  /* Botones del navbar móvil: círculos uniformes con área táctil cómoda */
+  .navbar-mobile-actions .nav-icon-btn,
+  .navbar-mobile-actions .nav-icon-btn-sm,
+  .navbar-mobile-actions .btn-menu-horizontal {
+    width: 2.75rem;
+    height: 2.75rem;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+  }
+
+  .navbar-mobile-actions {
+    gap: 0.4rem;
+  }
+
   .btn-theme-toggle,
   .btn-cart-mobile {
-    min-width: 44px;
-    min-height: 44px;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
   }
 
   /* Detalle de producto: media menos alto y acciones a lo ancho */
@@ -3070,6 +3082,70 @@ table {
   .wishlist-page {
     padding-inline: 1rem;
   }
+
+  /* ── Paneles del navbar (menú, carrito, usuario) en móvil ── */
+  .fullscreen-menu-panel,
+  .user-panel,
+  .cart-panel {
+    padding-inline: 1.1rem;
+  }
+
+  .fullscreen-panel-header {
+    padding-block: 0.5rem 0.85rem;
+  }
+
+  .panel-close-button {
+    padding: 0.5rem 1.1rem;
+    border-radius: 9999px;
+  }
+
+  /* Ítems del menú con área táctil amplia y separadores sutiles */
+  .fullscreen-menu-list {
+    gap: 0.15rem;
+  }
+
+  .menu-item-group {
+    border-bottom: 1px solid color-mix(in srgb, var(--color-border) 45%, transparent 55%);
+  }
+
+  .menu-item-group:last-child {
+    border-bottom: 0;
+  }
+
+  .menu-main-btn {
+    padding-block: 1.05rem;
+    font-size: 1rem;
+  }
+
+  .submenu-link {
+    padding-block: 0.6rem;
+    font-size: 0.95rem;
+  }
+
+  /* Evita estados "hover pegado" en táctil: el submenú se controla por is-open */
+  .menu-item-group:hover .submenu-list {
+    display: none;
+  }
+
+  .menu-item-group.is-open .submenu-list {
+    display: grid;
+    gap: 0.2rem;
+  }
+
+  /* Carrito: imagen más compacta y controles cómodos */
+  .cart-item {
+    grid-template-columns: 5rem minmax(0, 1fr);
+    gap: 0.85rem;
+  }
+
+  .cart-quantity-button {
+    width: 2.4rem;
+    height: 2.4rem;
+  }
+
+  .panel-action-button {
+    padding-block: 0.9rem;
+  }
 }
 
 /* Teléfonos estrechos */
@@ -3096,6 +3172,24 @@ table {
   .product-detail-meta {
     flex-wrap: wrap;
     gap: 0.5rem;
+  }
+
+  /* Marca más compacta para dejar espacio a los íconos del navbar */
+  .navbar-brand span {
+    font-size: 1.05rem;
+    letter-spacing: 0.2em;
+  }
+
+  .navbar-mobile-actions {
+    gap: 0.3rem;
+  }
+
+  .navbar-mobile-actions .nav-icon-btn,
+  .navbar-mobile-actions .btn-menu-horizontal {
+    width: 2.6rem;
+    height: 2.6rem;
+    min-width: 2.6rem;
+    min-height: 2.6rem;
   }
 }
 
