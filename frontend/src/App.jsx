@@ -121,6 +121,29 @@ function isTokenExpired(token) {
   }
 }
 
+function getTokenPayload(token) {
+  try {
+    const [, payloadPart] = String(token || '').split('.');
+    if (!payloadPart) return null;
+    const base64 = payloadPart.replace(/-/g, '+').replace(/_/g, '/');
+    return JSON.parse(atob(base64));
+  } catch {
+    return null;
+  }
+}
+
+function normalizeUserSession(user) {
+  if (!user) return null;
+
+  const tokenPayload = user.token ? getTokenPayload(user.token) : null;
+  return {
+    ...user,
+    id: Number(tokenPayload?.sub || user.id) || user.id,
+    email: tokenPayload?.email || user.email,
+    role: tokenPayload?.role || user.role || 'user',
+  };
+}
+
 function getInitialUser() {
   const stored = localStorage.getItem(USER_STORAGE_KEY);
   if (!stored) {
@@ -135,11 +158,12 @@ function getInitialUser() {
         localStorage.removeItem(USER_STORAGE_KEY);
         return null;
       }
-      return {
+      const normalized = normalizeUserSession({
         ...parsed,
-        role: parsed.role || 'user',
         token,
-      };
+      });
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(normalized));
+      return normalized;
     }
   } catch {
     // parsing failed
@@ -390,11 +414,11 @@ function App() {
       const refreshed = e.detail;
       setUser((prev) => {
         if (!prev) return prev;
-        const updated = {
+        const updated = normalizeUserSession({
           ...prev,
           token: refreshed.token,
           role: refreshed.rol || prev.role,
-        };
+        });
         localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(updated));
         return updated;
       });
@@ -404,14 +428,14 @@ function App() {
   }, []);
 
   const handleAuthSuccess = (nextUser) => {
-    const normalizedUser = {
+    const normalizedUser = normalizeUserSession({
       id: nextUser.id,
       name: nextUser.nombre || nextUser.name,
       email: nextUser.email,
       role: nextUser.rol || nextUser.role || 'user',
       token: nextUser.token || '',
       authSource: nextUser.authSource || 'database',
-    };
+    });
 
     const mergedCart = [...cartItems];
 
