@@ -3198,6 +3198,31 @@ table {
 
 /* Navbar móvil/tablet: panel de menú limpio y funcional */
 @media (max-width: 1023px) {
+  .site-footer-inner {
+    grid-template-columns: 1fr;
+    row-gap: 0.9rem;
+    justify-items: center;
+    text-align: center;
+  }
+
+  .site-footer-copy {
+    grid-column: 1;
+    white-space: normal;
+    justify-self: center;
+  }
+
+  .site-footer-links {
+    grid-column: 1;
+    justify-content: center;
+    justify-self: center;
+  }
+
+  .site-footer-social {
+    grid-column: 1;
+    justify-content: center;
+    justify-self: center;
+  }
+
   .fullscreen-menu-panel,
   .user-panel,
   .cart-panel {
