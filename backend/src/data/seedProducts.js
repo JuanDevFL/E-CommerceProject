@@ -1,5 +1,25 @@
 const usdToCop = (value) => Math.round(Number(value || 0) * 4000);
 
+const currentProductNames = [
+  'KIKU',
+  'ZAMI',
+  'NEMU',
+  'SHION',
+  'ZACURA',
+  'NAGOMI',
+  'MIYABI',
+  'FUJI',
+  'UME',
+  'RENRE',
+  'KOSU',
+  'BUKI',
+  'NOHANA',
+  'YUKI',
+  'ZAKURO',
+  'SUMIRE',
+  'TOKIO',
+];
+
 const seedProductBase = [
   {
     nombre: 'Tote Hana',
@@ -289,7 +309,16 @@ const seedProductBase = [
   }
 ];
 
-export const seedProducts = seedProductBase.map((product) => ({
-  ...product,
-  precio: usdToCop(product.precio),
-}));
+export const archivedSeedProductNames = seedProductBase
+  .slice(currentProductNames.length)
+  .map((product) => product.nombre);
+
+export const seedProducts = seedProductBase
+  .slice(0, currentProductNames.length)
+  .map((product, index) => ({
+    ...product,
+    legacy_nombre: product.nombre,
+    catalogo_codigo: `AZAMI-${currentProductNames[index]}`,
+    nombre: currentProductNames[index],
+    precio: usdToCop(product.precio),
+  }));

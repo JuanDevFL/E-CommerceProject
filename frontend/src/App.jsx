@@ -676,6 +676,7 @@ function App() {
           element={
             <ProductDetailPage
               products={catalogProducts}
+              productsLoading={catalogLoading}
               wishlistIds={wishlistIds}
               onAddToCart={handleAddToCart}
               onBuyNow={handleBuyNow}

@@ -343,8 +343,8 @@ function WompiSandboxWidget({ config, errorMessage, customerData, shippingAddres
   }
 
   return (
-    <button type="button" className="checkout-btn" onClick={handleOpenCheckout} disabled={Boolean(isPreparing)}>
-      {isPreparing ? 'Preparando pago con Wompi...' : <>Paga con <strong>Wompi</strong></>}
+    <button type="button" className="checkout-btn checkout-btn-wompi" onClick={handleOpenCheckout} disabled={Boolean(isPreparing)}>
+      {isPreparing ? 'Preparando pago...' : 'Pagar con Wompi'}
     </button>
   );
 }
@@ -901,79 +901,190 @@ export default function CheckoutPage({ user, cartItems, onBackToCatalog, onOrder
     const isError = wompiReturn.status === 'error';
     const isPending = wompiReturn.status === 'pending';
     const isSuccess = wompiReturn.status === 'success' || wompiReturn.status === 'already';
+    const receiptDate = returnTx?.finalizedAt
+      ? new Intl.DateTimeFormat('es-CO', { dateStyle: 'long', timeStyle: 'short' }).format(new Date(returnTx.finalizedAt))
+      : returnOrder?.createdAt
+        ? new Intl.DateTimeFormat('es-CO', { dateStyle: 'long', timeStyle: 'short' }).format(new Date(returnOrder.createdAt))
+        : new Intl.DateTimeFormat('es-CO', { dateStyle: 'long', timeStyle: 'short' }).format(new Date());
+
+    const orderItems = returnOrder?.items || [];
+    const address = returnOrder?.direccion_envio || null;
+    const subtotal = returnOrder?.subtotal ?? returnOrder?.total ?? null;
+    const envio = returnOrder?.envio ?? 0;
+
+    if (!isSuccess) {
+      return (
+        <main className="checkout-page">
+          <div className="checkout-shell">
+            <section className="checkout-success-card checkout-card">
+              <p className="checkout-kicker">
+                {isSyncing ? 'Procesando pago' : isError ? 'Pago sin confirmar' : 'Pago en proceso'}
+              </p>
+              <h1 className="checkout-title">
+                {isSyncing ? 'Confirmando tu pago con Wompi…'
+                  : isError ? 'No pudimos confirmar tu pago'
+                  : 'Tu pago está siendo procesado'}
+              </h1>
+              <p className="checkout-subtitle">
+                {isSyncing
+                  ? 'Validando la transacción de Wompi y guardando tu orden…'
+                  : wompiReturn.message || (isError ? 'Ocurrió un problema al sincronizar el pago.' : 'Te avisaremos cuando se confirme.')}
+              </p>
+              {isSyncing ? <div className="checkout-warning">Validando pago de Wompi y guardando la orden…</div> : null}
+              {!isSyncing ? (
+                <div className="checkout-actions">
+                  <button type="button" className="checkout-btn" onClick={onBackToCatalog}>Volver al catálogo</button>
+                </div>
+              ) : null}
+            </section>
+          </div>
+        </main>
+      );
+    }
 
     return (
       <main className="checkout-page">
         <div className="checkout-shell">
-          <section className="checkout-success-card checkout-card">
-            <p className="checkout-kicker">
-              {isSyncing ? 'Procesando pago' : isError ? 'Pago sin confirmar' : isPending ? 'Pago en proceso' : 'Pago aprobado'}
-            </p>
-            <h1 className="checkout-title">
-              {isSyncing
-                ? 'Estamos confirmando tu pago con Wompi'
-                : isError
-                  ? 'No pudimos confirmar tu pago'
-                  : isPending
-                    ? 'Tu pago está siendo procesado'
-                    : wompiReturn.status === 'already'
-                      ? 'Tu pago ya estaba registrado'
-                      : '¡Gracias! Tu pago fue aprobado'}
-            </h1>
-            <p className="checkout-subtitle">
-              {isSyncing
-                ? 'Validando la transacción de Wompi y guardando tu orden en nuestra base de datos...'
-                : isError
-                  ? (wompiReturn.message || 'Ocurrió un problema al sincronizar el pago.')
-                  : isPending
-                    ? (wompiReturn.message || 'Tu pago está siendo procesado por Wompi. Te avisaremos cuando se confirme.')
-                    : wompiReturn.status === 'already'
-                      ? 'Ya teníamos registrada esta compra, así que no la duplicamos. Puedes consultar el detalle cuando quieras.'
-                      : 'Confirmamos tu pago con Wompi y registramos tu pedido correctamente.'}
-            </p>
+          <section className="checkout-receipt">
 
-            {isSyncing ? (
-              <div className="checkout-warning">Validando pago de Wompi y guardando la orden...</div>
-            ) : null}
+            {/* ── Cabecera ── */}
+            <div className="checkout-receipt-header">
+              <div className="checkout-receipt-status">
+                <span className="checkout-receipt-icon" aria-hidden="true">✓</span>
+                <div>
+                  <p className="checkout-kicker">Comprobante de pago</p>
+                  <h1 className="checkout-title">¡Pago aprobado!</h1>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="checkout-receipt-print"
+                onClick={() => window.print()}
+                aria-label="Imprimir recibo"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                Imprimir
+              </button>
+            </div>
 
-            {isSuccess ? (
-              <div className="checkout-success-grid">
+            {/* ── Barra de referencia ── */}
+            <div className="checkout-receipt-meta">
+              <div>
+                <span>Referencia</span>
+                <strong>{returnReference}</strong>
+              </div>
+              {returnOrder?.id ? (
                 <div>
-                  <span className="checkout-muted">Referencia</span>
-                  <strong>{returnReference}</strong>
-                  <p className="checkout-footnote">Transacción {wompiReturn.transactionId}</p>
+                  <span>Pedido</span>
+                  <strong>#{returnOrder.id}</strong>
                 </div>
-                <div>
-                  <span className="checkout-muted">Total pagado</span>
-                  <strong>{returnAmount || '—'}</strong>
-                  <p className="checkout-footnote">Estado: aprobado</p>
-                </div>
-                {returnOrder ? (
-                  <div>
-                    <span className="checkout-muted">Pedido</span>
-                    <strong>#{returnOrder.id ?? returnOrder.orden_id ?? returnReference}</strong>
-                    <p className="checkout-footnote">{returnOrder.estado ? `Estado: ${formatOrderStatusLabel(returnOrder.estado)}` : 'Registrado en tu cuenta'}</p>
+              ) : null}
+              <div>
+                <span>Fecha</span>
+                <strong>{receiptDate}</strong>
+              </div>
+              <div>
+                <span>Estado</span>
+                <strong className="checkout-receipt-approved">Aprobado ✓</strong>
+              </div>
+            </div>
+
+            {/* ── Cuerpo del recibo ── */}
+            <div className="checkout-receipt-body">
+
+              {/* columna izquierda */}
+              <div className="checkout-receipt-col">
+
+                {orderItems.length > 0 ? (
+                  <div className="checkout-receipt-section">
+                    <h2 className="checkout-receipt-section-title">Productos</h2>
+                    <ul className="checkout-receipt-items">
+                      {orderItems.map((item, idx) => (
+                        <li key={item.productId ?? idx} className="checkout-receipt-item">
+                          <span className="checkout-receipt-item-qty">{item.quantity}×</span>
+                          <span className="checkout-receipt-item-name">{item.nombre || `Producto #${item.productId}`}</span>
+                          <span className="checkout-receipt-item-price">{formatPrice(item.subtotal ?? item.precio_unitario * item.quantity)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+
+                {returnOrder?.cliente_nombre ? (
+                  <div className="checkout-receipt-section">
+                    <h2 className="checkout-receipt-section-title">Cliente</h2>
+                    <p className="checkout-receipt-data">{returnOrder.cliente_nombre}</p>
+                    {returnOrder.cliente_email ? <p className="checkout-receipt-data checkout-muted">{returnOrder.cliente_email}</p> : null}
+                    {returnOrder.cliente_telefono ? <p className="checkout-receipt-data checkout-muted">{returnOrder.cliente_telefono}</p> : null}
                   </div>
                 ) : null}
               </div>
-            ) : null}
 
-            {!isSyncing ? (
-              <div className="checkout-actions">
-                <button type="button" className="checkout-btn" onClick={onBackToCatalog}>
-                  Volver al catálogo
-                </button>
-                {user ? (
-                  <Link to="/mi-cuenta" className="checkout-btn checkout-btn-secondary">
-                    Ver mis pedidos
-                  </Link>
-                ) : (
-                  <Link to="/auth" className="checkout-btn checkout-btn-secondary">
-                    Crear cuenta
-                  </Link>
-                )}
+              {/* columna derecha */}
+              <div className="checkout-receipt-col">
+
+                <div className="checkout-receipt-section">
+                  <h2 className="checkout-receipt-section-title">Resumen del pago</h2>
+                  <div className="checkout-receipt-totals">
+                    {subtotal != null ? (
+                      <div className="checkout-receipt-total-row">
+                        <span>Subtotal</span>
+                        <span>{formatPrice(subtotal)}</span>
+                      </div>
+                    ) : null}
+                    <div className="checkout-receipt-total-row">
+                      <span>Envío</span>
+                      <span>{envio === 0 ? 'Gratis' : formatPrice(envio)}</span>
+                    </div>
+                    <div className="checkout-receipt-total-row is-total">
+                      <span>Total pagado</span>
+                      <span>{returnAmount || '—'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {wompiReturn.transactionId ? (
+                  <div className="checkout-receipt-section">
+                    <h2 className="checkout-receipt-section-title">Transacción Wompi</h2>
+                    <p className="checkout-receipt-data checkout-muted" style={{ wordBreak: 'break-all', fontSize: '0.8rem' }}>
+                      {wompiReturn.transactionId}
+                    </p>
+                  </div>
+                ) : null}
+
+                {address ? (
+                  <div className="checkout-receipt-section">
+                    <h2 className="checkout-receipt-section-title">Dirección de envío</h2>
+                    {address.nombre_receptor ? <p className="checkout-receipt-data">{address.nombre_receptor}</p> : null}
+                    {address.calle ? <p className="checkout-receipt-data checkout-muted">{address.calle}</p> : null}
+                    {(address.ciudad || address.estado) ? (
+                      <p className="checkout-receipt-data checkout-muted">
+                        {[address.ciudad, address.estado, address.codigo_postal].filter(Boolean).join(', ')}
+                      </p>
+                    ) : null}
+                    {address.pais ? <p className="checkout-receipt-data checkout-muted">{address.pais}</p> : null}
+                  </div>
+                ) : null}
+
               </div>
-            ) : null}
+            </div>
+
+            {/* ── Acciones ── */}
+            <div className="checkout-receipt-footer">
+              <button type="button" className="checkout-btn checkout-btn-wompi" onClick={onBackToCatalog}>
+                Volver al comercio
+              </button>
+              {user ? (
+                <Link to="/mi-cuenta" className="checkout-btn checkout-btn-secondary">
+                  Ver mis pedidos
+                </Link>
+              ) : (
+                <Link to="/auth" className="checkout-btn checkout-btn-secondary">
+                  Crear cuenta
+                </Link>
+              )}
+            </div>
+
           </section>
         </div>
       </main>
@@ -1187,15 +1298,6 @@ export default function CheckoutPage({ user, cartItems, onBackToCatalog, onOrder
               ) : null}
 
               <div className="checkout-actions">
-                <button
-                  type="button"
-                  className="checkout-btn"
-                  onClick={handleCreateTestOrder}
-                  disabled={isCreatingTestOrder || !canCreateTestOrder}
-                >
-                  {isCreatingTestOrder ? 'Guardando pedido de prueba...' : user ? 'Simular pago de prueba' : 'Comprar como invitado'}
-                </button>
-
                 <WompiSandboxWidget
                   config={wompiWidgetConfig}
                   errorMessage={wompiPrereqMessage || wompiWidgetError}
@@ -1218,8 +1320,8 @@ export default function CheckoutPage({ user, cartItems, onBackToCatalog, onOrder
 
               <p className="checkout-footnote">
                 {user
-                  ? 'El botón de prueba guarda la orden en tu base de datos sin cobrar dinero real. Wompi queda como siguiente paso cuando tengas tu comercio sandbox.'
-                  : 'Tu compra invitada ya queda lista para persistirse en base de datos. Luego conectaremos ese mismo flujo con el pago real de Wompi y las notificaciones por correo.'}
+                  ? 'Al continuar con Wompi tu orden queda registrada y el pago se procesa de forma segura.'
+                  : 'Puedes comprar sin cuenta. Al continuar con Wompi tu orden queda registrada con tus datos de contacto.'}
               </p>
             </div>
           </aside>

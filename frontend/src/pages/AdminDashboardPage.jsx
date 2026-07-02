@@ -1,5 +1,17 @@
-import { useEffect, useState } from 'react';
-import { createAdminAnnouncement, createAdminProducto, fetchAdminDashboard, fetchOrderDetail, updateAdminAnnouncement, updateAdminProducto, updateOrderStatus, updateUsuarioRol } from '../api.js';
+import { useEffect, useRef, useState } from 'react';
+import {
+  createAdminAnnouncement,
+  createAdminProducto,
+  downloadOfflineSalesTemplate,
+  fetchAdminDashboard,
+  fetchOrderDetail,
+  importOfflineSalesWorkbook,
+  updateAdminAnnouncement,
+  updateAdminProducto,
+  updateOrderStatus,
+  uploadProductImage,
+  updateUsuarioRol,
+} from '../api.js';
 import { formatPrice as formatCurrency, normalizePrice } from '../utils/pricing.js';
 import './AdminDashboardPage.css';
 
@@ -46,6 +58,19 @@ function toLocalDateKey(value) {
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+}
+
+function formatLabel(value, fallback = 'Sin dato') {
+  const normalized = String(value || '').trim();
+  if (!normalized) {
+    return fallback;
+  }
+
+  return normalized
+    .split('_')
+    .filter(Boolean)
+    .map((chunk) => chunk.charAt(0).toUpperCase() + chunk.slice(1))
+    .join(' ');
 }
 
 function buildRoleDrafts(users) {
@@ -114,6 +139,9 @@ function getOrderStatusLabel(status) {
 }
 
 function AdminDashboardPage({ user, onProductCreated }) {
+  const offlineSalesInputRef = useRef(null);
+  const createImageInputRef = useRef(null);
+  const editImageInputRef = useRef(null);
   const [dashboard, setDashboard] = useState(null);
   const [roleDrafts, setRoleDrafts] = useState({});
   const [productForm, setProductForm] = useState(initialProductForm);
@@ -122,6 +150,8 @@ function AdminDashboardPage({ user, onProductCreated }) {
   const [actionError, setActionError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [isCreatingProduct, setIsCreatingProduct] = useState(false);
+  const [isUploadingCreateImage, setIsUploadingCreateImage] = useState(false);
+  const [isUploadingEditImage, setIsUploadingEditImage] = useState(false);
   const [updatingUserId, setUpdatingUserId] = useState(null);
   const [editingProduct, setEditingProduct] = useState(null);
   const [editForm, setEditForm] = useState(initialProductForm);
@@ -130,6 +160,9 @@ function AdminDashboardPage({ user, onProductCreated }) {
   const [announcementDrafts, setAnnouncementDrafts] = useState({});
   const [isCreatingAnnouncement, setIsCreatingAnnouncement] = useState(false);
   const [savingAnnouncementId, setSavingAnnouncementId] = useState(null);
+  const [offlineSalesFile, setOfflineSalesFile] = useState(null);
+  const [isDownloadingTemplate, setIsDownloadingTemplate] = useState(false);
+  const [isImportingOfflineSales, setIsImportingOfflineSales] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [orderDetail, setOrderDetail] = useState(null);
   const [loadingOrder, setLoadingOrder] = useState(false);
@@ -240,6 +273,36 @@ function AdminDashboardPage({ user, onProductCreated }) {
     setEditForm((current) => ({ ...current, [name]: value }));
   };
 
+  const handleCreateImageFile = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setIsUploadingCreateImage(true);
+    setActionError('');
+    try {
+      const { url } = await uploadProductImage(file);
+      setProductForm((current) => ({ ...current, imagen_url: url }));
+    } catch (error) {
+      setActionError(error.message || 'No se pudo subir la imagen.');
+    } finally {
+      setIsUploadingCreateImage(false);
+    }
+  };
+
+  const handleEditImageFile = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setIsUploadingEditImage(true);
+    setActionError('');
+    try {
+      const { url } = await uploadProductImage(file);
+      setEditForm((current) => ({ ...current, imagen_url: url }));
+    } catch (error) {
+      setActionError(error.message || 'No se pudo subir la imagen.');
+    } finally {
+      setIsUploadingEditImage(false);
+    }
+  };
+
   const handleSaveEdit = async (event) => {
     event.preventDefault();
     setIsSavingEdit(true);
@@ -256,6 +319,7 @@ function AdminDashboardPage({ user, onProductCreated }) {
       const updated = await updateAdminProducto(editingProduct.id, payload);
       setSuccessMessage(`${updated.nombre} se actualizó correctamente.`);
       setEditingProduct(null);
+      onProductCreated?.(updated);
       await loadDashboard();
     } catch (error) {
       setActionError(error.message || 'No se pudo actualizar el producto.');
@@ -364,6 +428,59 @@ function AdminDashboardPage({ user, onProductCreated }) {
       setActionError(error.message || 'No se pudo actualizar el anuncio.');
     } finally {
       setSavingAnnouncementId(null);
+    }
+  };
+
+  const handleDownloadOfflineTemplate = async () => {
+    setActionError('');
+    setSuccessMessage('');
+    setIsDownloadingTemplate(true);
+
+    try {
+      const blob = await downloadOfflineSalesTemplate();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = downloadUrl;
+      anchor.download = 'plantilla_ventas_externas_azami.xlsx';
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+      setSuccessMessage('La plantilla de ventas externas se descargó correctamente.');
+    } catch (error) {
+      setActionError(error.message || 'No se pudo descargar la plantilla de ventas externas.');
+    } finally {
+      setIsDownloadingTemplate(false);
+    }
+  };
+
+  const handleImportOfflineSales = async (event) => {
+    event.preventDefault();
+
+    if (!offlineSalesFile) {
+      setActionError('Selecciona un archivo Excel o CSV antes de importar las ventas externas.');
+      return;
+    }
+
+    setActionError('');
+    setSuccessMessage('');
+    setIsImportingOfflineSales(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', offlineSalesFile);
+
+      const result = await importOfflineSalesWorkbook(formData);
+      setSuccessMessage(result.message || 'Las ventas externas se importaron correctamente.');
+      setOfflineSalesFile(null);
+      if (offlineSalesInputRef.current) {
+        offlineSalesInputRef.current.value = '';
+      }
+      await loadDashboard();
+    } catch (error) {
+      setActionError(error.message || 'No se pudo importar el archivo de ventas externas.');
+    } finally {
+      setIsImportingOfflineSales(false);
     }
   };
 
@@ -847,6 +964,67 @@ function AdminDashboardPage({ user, onProductCreated }) {
             )}
 
             {activeTab === 'ventas' && (
+              <>
+              <section className="admin-panel">
+                <div className="admin-panel-head">
+                  <div>
+                    <p className="admin-panel-kicker">Ventas externas</p>
+                    <h2>Plantilla e importacion al mismo reporte</h2>
+                  </div>
+                </div>
+
+                <div className="admin-upload-grid">
+                  <div className="admin-upload-copy">
+                    <p>
+                      Descarga la plantilla oficial para vendedores o para el equipo admin. La importacion crea
+                      ordenes en la misma tabla del reporte y descuenta inventario del catalogo actual.
+                    </p>
+                    <ul className="admin-upload-list">
+                      <li>Usa <strong>producto_id</strong> existentes de la base de datos.</li>
+                      <li>Repite <strong>referencia_pago</strong> si una venta tiene varios productos.</li>
+                      <li>Si dejas precio, subtotal o total vacios, el sistema los calcula automaticamente.</li>
+                      <li>El canal, vendedor y notas quedan visibles en el historial admin.</li>
+                    </ul>
+                  </div>
+
+                  <form className="admin-upload-form" onSubmit={handleImportOfflineSales}>
+                    <label className="admin-field admin-field-wide">
+                      <span>Archivo de ventas externas</span>
+                      <input
+                        ref={offlineSalesInputRef}
+                        type="file"
+                        accept=".xlsx,.xls,.csv"
+                        onChange={(event) => setOfflineSalesFile(event.target.files?.[0] || null)}
+                      />
+                    </label>
+
+                    <p className="admin-upload-hint">
+                      {offlineSalesFile
+                        ? `Archivo seleccionado: ${offlineSalesFile.name}`
+                        : 'Formatos permitidos: .xlsx, .xls o .csv. Tamano maximo: 5 MB.'}
+                    </p>
+
+                    <div className="admin-upload-actions">
+                      <button
+                        type="button"
+                        className="admin-secondary-button"
+                        onClick={handleDownloadOfflineTemplate}
+                        disabled={isDownloadingTemplate}
+                      >
+                        {isDownloadingTemplate ? 'Descargando...' : 'Descargar plantilla'}
+                      </button>
+                      <button
+                        type="submit"
+                        className="admin-primary-button"
+                        disabled={isImportingOfflineSales}
+                      >
+                        {isImportingOfflineSales ? 'Importando ventas...' : 'Importar ventas'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </section>
+
             <section className="admin-panel admin-orders-panel">
               <div className="admin-panel-head">
                 <div>
@@ -871,6 +1049,7 @@ function AdminDashboardPage({ user, onProductCreated }) {
                   <option value="all">Todos los estados</option>
                   <option value="pendiente">Pendiente</option>
                   <option value="pago_confirmado">Pago confirmado</option>
+                  <option value="cancelado">Cancelado</option>
                   <option value="enviado">Enviado</option>
                   <option value="entregado">Entregado</option>
                 </select>
@@ -885,6 +1064,7 @@ function AdminDashboardPage({ user, onProductCreated }) {
                           <th>#</th>
                           <th>Cliente</th>
                           <th>Email</th>
+                          <th>Canal</th>
                           <th>Total</th>
                           <th>Estado</th>
                           <th>Fecha</th>
@@ -898,8 +1078,15 @@ function AdminDashboardPage({ user, onProductCreated }) {
                           return (
                           <tr key={order.id} className="admin-order-row" onClick={() => handleOrderClick(order.id)}>
                             <td data-label="#"><strong>{order.id}</strong></td>
-                            <td data-label="Cliente">{order.cliente}</td>
+                            <td data-label="Cliente">
+                              <strong>{order.cliente}</strong>
+                              <small>{order.vendedor_nombre ? `Vendedor: ${order.vendedor_nombre}` : formatLabel(order.origen_registro, 'Plataforma')}</small>
+                            </td>
                             <td data-label="Email"><small>{order.cliente_email || '—'}</small></td>
+                            <td data-label="Canal">
+                              <strong>{formatLabel(order.canal_venta, 'Web')}</strong>
+                              <small>{formatLabel(order.origen_registro, 'Plataforma')}</small>
+                            </td>
                             <td data-label="Total">{formatCurrency(order.total)}</td>
                             <td data-label="Estado"><span className={`admin-status-badge is-${normalizedStatus}`}>{getOrderStatusLabel(order.estado)}</span></td>
                             <td data-label="Fecha"><small>{formatDate(order.creado_at)}</small></td>
@@ -931,6 +1118,7 @@ function AdminDashboardPage({ user, onProductCreated }) {
                 </div>
               )}
             </section>
+            </>
             )}
 
             {activeTab === 'analitica' && (
@@ -1046,10 +1234,43 @@ function AdminDashboardPage({ user, onProductCreated }) {
                       <input type="text" name="etiqueta" value={productForm.etiqueta} onChange={handleProductFieldChange} placeholder="Lanzamiento" />
                     </label>
 
-                    <label className="admin-field admin-field-wide">
-                      <span>Imagen URL</span>
-                      <input type="url" name="imagen_url" value={productForm.imagen_url} onChange={handleProductFieldChange} placeholder="https://..." />
-                    </label>
+                    <div className="admin-field admin-field-wide">
+                      <span>Imagen</span>
+                      <div className="admin-image-uploader">
+                        {productForm.imagen_url && (
+                          <img
+                            src={productForm.imagen_url}
+                            alt="Vista previa"
+                            className="admin-image-preview"
+                          />
+                        )}
+                        <div className="admin-image-uploader-controls">
+                          <input
+                            ref={createImageInputRef}
+                            type="file"
+                            accept="image/*"
+                            style={{ display: 'none' }}
+                            onChange={handleCreateImageFile}
+                          />
+                          <button
+                            type="button"
+                            className="admin-secondary-button"
+                            onClick={() => createImageInputRef.current?.click()}
+                            disabled={isUploadingCreateImage}
+                          >
+                            {isUploadingCreateImage ? 'Subiendo...' : productForm.imagen_url ? 'Cambiar imagen' : 'Subir imagen'}
+                          </button>
+                          <input
+                            type="url"
+                            name="imagen_url"
+                            value={productForm.imagen_url}
+                            onChange={handleProductFieldChange}
+                            placeholder="O pega una URL directamente"
+                            className="admin-image-url-input"
+                          />
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
                   <button type="submit" className="admin-primary-button" disabled={isCreatingProduct}>
@@ -1483,6 +1704,40 @@ function AdminDashboardPage({ user, onProductCreated }) {
                     </div>
                   </div>
 
+                  <div className="admin-order-detail-grid">
+                    <div className="admin-order-detail-card">
+                      <span>Referencia</span>
+                      <strong>{orderDetail.referencia_pago || '—'}</strong>
+                    </div>
+                    <div className="admin-order-detail-card">
+                      <span>Canal</span>
+                      <strong>{formatLabel(orderDetail.canal_venta, 'Web')}</strong>
+                      <small>{formatLabel(orderDetail.origen_registro, 'Plataforma')}</small>
+                    </div>
+                    <div className="admin-order-detail-card">
+                      <span>Pago</span>
+                      <strong>{formatLabel(orderDetail.payment_method, 'Manual')}</strong>
+                      <small>{formatLabel(orderDetail.payment_status, 'Sin dato')}</small>
+                    </div>
+                    <div className="admin-order-detail-card">
+                      <span>Proveedor</span>
+                      <strong>{formatLabel(orderDetail.payment_provider, 'Sin dato')}</strong>
+                    </div>
+                    {(orderDetail.vendedor_nombre || orderDetail.vendedor_email) && (
+                      <div className="admin-order-detail-card">
+                        <span>Vendedor</span>
+                        <strong>{orderDetail.vendedor_nombre || 'Sin nombre'}</strong>
+                        <small>{orderDetail.vendedor_email || 'Sin correo'}</small>
+                      </div>
+                    )}
+                    {orderDetail.notas_admin && (
+                      <div className="admin-order-detail-card admin-order-note">
+                        <span>Notas internas</span>
+                        <p>{orderDetail.notas_admin}</p>
+                      </div>
+                    )}
+                  </div>
+
                   <div className="admin-products-table-wrap">
                     <table className="admin-products-table">
                       <thead>
@@ -1567,10 +1822,43 @@ function AdminDashboardPage({ user, onProductCreated }) {
                     <span>Etiqueta</span>
                     <input type="text" name="etiqueta" value={editForm.etiqueta} onChange={handleEditFieldChange} />
                   </label>
-                  <label className="admin-field admin-field-wide">
-                    <span>Imagen URL</span>
-                    <input type="url" name="imagen_url" value={editForm.imagen_url} onChange={handleEditFieldChange} />
-                  </label>
+                  <div className="admin-field admin-field-wide">
+                    <span>Imagen</span>
+                    <div className="admin-image-uploader">
+                      {editForm.imagen_url && (
+                        <img
+                          src={editForm.imagen_url}
+                          alt="Vista previa"
+                          className="admin-image-preview"
+                        />
+                      )}
+                      <div className="admin-image-uploader-controls">
+                        <input
+                          ref={editImageInputRef}
+                          type="file"
+                          accept="image/*"
+                          style={{ display: 'none' }}
+                          onChange={handleEditImageFile}
+                        />
+                        <button
+                          type="button"
+                          className="admin-secondary-button"
+                          onClick={() => editImageInputRef.current?.click()}
+                          disabled={isUploadingEditImage}
+                        >
+                          {isUploadingEditImage ? 'Subiendo...' : editForm.imagen_url ? 'Cambiar imagen' : 'Subir imagen'}
+                        </button>
+                        <input
+                          type="url"
+                          name="imagen_url"
+                          value={editForm.imagen_url}
+                          onChange={handleEditFieldChange}
+                          placeholder="O pega una URL directamente"
+                          className="admin-image-url-input"
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
                 <div className="admin-modal-actions">
                   <button type="button" className="admin-secondary-button" onClick={() => setEditingProduct(null)}>Cancelar</button>

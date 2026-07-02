@@ -2,9 +2,25 @@ import { useParams, Link } from 'react-router-dom';
 import { formatPrice } from '../utils/pricing.js';
 import { translateCategoryLabel, translateProductTagLabel } from '../utils/catalogLabels.js';
 
-function ProductDetailPage({ products, wishlistIds = [], onAddToCart, onBuyNow, onToggleWishlist }) {
+function ProductDetailPage({ products, productsLoading = false, wishlistIds = [], onAddToCart, onBuyNow, onToggleWishlist }) {
   const { productId } = useParams();
   const product = products.find((p) => String(p.id) === String(productId));
+
+  if (!product && productsLoading) {
+    return (
+      <main className="product-detail-page">
+        <div className="product-detail-skeleton">
+          <div className="product-detail-skeleton-media" />
+          <div className="product-detail-skeleton-info">
+            <div className="product-detail-skeleton-line short" />
+            <div className="product-detail-skeleton-line" />
+            <div className="product-detail-skeleton-line" />
+            <div className="product-detail-skeleton-line medium" />
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   if (!product) {
     return (

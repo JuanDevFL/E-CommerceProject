@@ -36,6 +36,7 @@ if (process.env.ALLOWED_ORIGINS) {
   }
 }
 
+app.set('trust proxy', 1); // Railway runs behind a reverse proxy
 app.use(helmet());
 app.use(cors({
   origin(origin, callback) {

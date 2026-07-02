@@ -1,5 +1,6 @@
 import pool from '../db.js';
 import { normalizeUserRole } from '../userSchema.js';
+import { uploadBuffer } from '../services/cloudinaryService.js';
 
 function toNumber(value) {
   return Number(value || 0);
@@ -41,7 +42,15 @@ function normalizeAnnouncementStatus(value) {
 }
 
 function normalizeAnnouncementUrl(value) {
-  return String(value || '').trim();
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  try {
+    const parsed = new URL(raw);
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return '';
+  } catch {
+    return '';
+  }
+  return raw;
 }
 
 export async function getAdminDashboard(req, res, next) {
@@ -96,6 +105,9 @@ export async function getAdminDashboard(req, res, next) {
           o.total,
           o.estado,
           o.creado_at,
+          o.canal_venta,
+          o.origen_registro,
+          o.vendedor_nombre,
           COALESCE(u.nombre, o.cliente_nombre, 'Cliente sin registro') AS cliente,
           COALESCE(u.email, o.cliente_email) AS cliente_email,
           o.cliente_tipo,
@@ -351,7 +363,8 @@ export async function getOrderDetail(req, res, next) {
 
     const [orderRows] = await pool.query(
       `SELECT o.id, o.subtotal, o.envio, o.total, o.estado, o.creado_at,
-              o.payment_status, o.referencia_pago, o.cliente_tipo, o.cliente_telefono, o.direccion_envio_json,
+              o.payment_status, o.payment_provider, o.payment_method, o.referencia_pago, o.cliente_tipo, o.cliente_telefono, o.direccion_envio_json,
+              o.canal_venta, o.origen_registro, o.vendedor_nombre, o.vendedor_email, o.notas_admin,
               COALESCE(u.nombre, o.cliente_nombre, 'Cliente sin registro') AS cliente,
               COALESCE(u.email, o.cliente_email) AS cliente_email
        FROM ordenes o
@@ -405,6 +418,23 @@ export async function updateOrderStatus(req, res, next) {
     await pool.query('UPDATE ordenes SET estado = ? WHERE id = ?', [requestedState, orderId]);
 
     res.json({ id: orderId, estado: requestedState });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function uploadImage(req, res, next) {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No se recibió ninguna imagen' });
+    }
+
+    if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+      return res.status(503).json({ error: 'El servicio de imágenes no está configurado aún (variables CLOUDINARY_*)' });
+    }
+
+    const result = await uploadBuffer(req.file.buffer);
+    res.json({ url: result.secure_url });
   } catch (error) {
     next(error);
   }

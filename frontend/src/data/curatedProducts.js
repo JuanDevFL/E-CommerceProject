@@ -1,5 +1,25 @@
 import { normalizePrice } from '../utils/pricing.js';
 
+const currentProductNames = [
+  'KIKU',
+  'ZAMI',
+  'NEMU',
+  'SHION',
+  'ZACURA',
+  'NAGOMI',
+  'MIYABI',
+  'FUJI',
+  'UME',
+  'RENRE',
+  'KOSU',
+  'BUKI',
+  'NOHANA',
+  'YUKI',
+  'ZAKURO',
+  'SUMIRE',
+  'TOKIO',
+];
+
 const curatedFallbackImages = [
   'https://images.pexels.com/photos/36365230/pexels-photo-36365230.jpeg?auto=compress&cs=tinysrgb&w=1600',
   'https://images.pexels.com/photos/23223842/pexels-photo-23223842.jpeg?auto=compress&cs=tinysrgb&w=1600',
@@ -344,11 +364,14 @@ const curatedProductBase = [
   }
 ];
 
-export const curatedProducts = curatedProductBase.map((product) => ({
-  ...product,
-  backendId: null,
-  precio: normalizePrice(product.precio),
-}));
+export const curatedProducts = curatedProductBase
+  .slice(0, currentProductNames.length)
+  .map((product, index) => ({
+    ...product,
+    nombre: currentProductNames[index],
+    backendId: null,
+    precio: normalizePrice(product.precio),
+  }));
 
 const remoteCategories = ['Selección online', 'Colección atelier', 'Drop limitado'];
 const remoteTones = ['Crema', 'Marfil', 'Negro', 'Borgoña'];

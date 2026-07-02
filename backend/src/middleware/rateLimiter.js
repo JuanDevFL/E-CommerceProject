@@ -59,3 +59,15 @@ export const checkoutWidgetLimiter = rateLimit({
   legacyHeaders: false,
   message: { error: 'Demasiadas solicitudes de pago. Intenta de nuevo en unos minutos.' },
 });
+
+/**
+ * Límite para webhook de Wompi: 200 eventos por minuto por IP.
+ * Protege contra floods al endpoint público de eventos de pago.
+ */
+export const wompiWebhookLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many webhook requests.' },
+});

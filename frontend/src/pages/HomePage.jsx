@@ -114,11 +114,10 @@ function HomePage({ catalogProducts }) {
       <section className="site-section bg-surface py-10 sm:py-14">
         <div className="site-section-inner">
           <div className="mx-auto max-w-3xl text-base leading-7 text-muted space-y-5">
-            <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus lacinia odio vitae vestibulum vestibulum. Cras vehicula, mi eget laoreet venenatis, sem eros scelerisque nulla, at volutpat nisl eros sed libero. Proin gravida hendrerit lectus a molestie.</p>
-            <p>Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit.</p>
-            <p>At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et quas molestias excepturi sint occaecati cupiditate non provident, similique sunt in culpa qui officia deserunt mollitia animi.</p>
-            <p>Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex ea commodi consequatur? Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur.</p>
-            <p>Temporibus autem quibusdam et aut officiis debitis aut rerum necessitatibus saepe eveniet ut et voluptates repudiandae sint et molestiae non recusandae. Itaque earum rerum hic tenetur a sapiente delectus, ut aut reiciendis voluptatibus maiores.</p>
+            <p>Azami Studio nace de la convicción de que los accesorios de lujo deben ser honestos: honestos en sus materiales, en su manufactura y en su propósito. Cada pieza pasa por un proceso artesanal riguroso antes de llegar a tus manos.</p>
+            <p>Trabajamos con cueros seleccionados, herrajes de primera calidad y líneas de diseño que evitan la tendencia pasajera. El resultado son bolsos que no solo acompañan un atuendo, sino que definen un estilo propio y duradero.</p>
+            <p>Nuestra colección se renueva por temporadas cortas y controladas. Producimos en lotes pequeños para garantizar atención al detalle en cada unidad, lo que también convierte cada pieza en algo genuinamente exclusivo.</p>
+            <p>Si buscas un accesorio con historia, con carácter y con la solidez de lo bien hecho, estás en el lugar correcto. Explora nuestra selección y encuentra la pieza que lleva tu nombre.</p>
           </div>
         </div>
       </section>
@@ -136,11 +135,9 @@ function HomePage({ catalogProducts }) {
       <section className="site-section bg-surface-alt py-10 sm:py-14">
         <div className="site-section-inner">
           <div className="mx-auto max-w-3xl text-base leading-7 text-muted space-y-5">
-            <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus lacinia odio vitae vestibulum vestibulum. Cras vehicula, mi eget laoreet venenatis, sem eros scelerisque nulla, at volutpat nisl eros sed libero. Proin gravida hendrerit lectus a molestie.</p>
-            <p>Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit.</p>
-            <p>At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et quas molestias excepturi sint occaecati cupiditate non provident, similique sunt in culpa qui officia deserunt mollitia animi.</p>
-            <p>Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex ea commodi consequatur? Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur.</p>
-            <p>Temporibus autem quibusdam et aut officiis debitis aut rerum necessitatibus saepe eveniet ut et voluptates repudiandae sint et molestiae non recusandae. Itaque earum rerum hic tenetur a sapiente delectus, ut aut reiciendis voluptatibus maiores.</p>
+            <p>Cada temporada Azami presenta una selección cápsula construida alrededor de un concepto de color y forma. No seguimos tendencias masivas: creamos referencias propias que evolucionan con quienes las llevan.</p>
+            <p>Nuestro proceso de curaduría incluye pruebas de resistencia, validación de herrajes y revisión de costuras antes de aprobar cualquier diseño para producción. La calidad no es un argumento de venta, es una condición de entrada.</p>
+            <p>Ofrecemos envío a todo el territorio nacional con empaque especial para cada pedido. Si tienes preguntas sobre alguna pieza, nuestro equipo está disponible por WhatsApp para orientarte antes de tu compra.</p>
           </div>
         </div>
       </section>

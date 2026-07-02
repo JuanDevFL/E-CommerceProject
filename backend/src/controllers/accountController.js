@@ -141,7 +141,7 @@ export async function changePassword(req, res) {
       return res.status(400).json({ error: 'La contraseña actual es incorrecta' });
     }
 
-    const hash = await bcrypt.hash(newPassword, 10);
+    const hash = await bcrypt.hash(newPassword, 12);
     await pool.query('UPDATE usuarios SET password = ? WHERE id = ?', [hash, req.user.id]);
 
     await logActividad({

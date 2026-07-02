@@ -6,28 +6,28 @@ const slides = [
     alt: 'Bolsos de cuero en tonos tierra sobre fondo blanco.',
     eyebrow: 'Editorial Azami',
     title: 'Piezas con estructura y presencia.',
-    description: 'Selecciones visuales temporales para ubicar el carrusel en el hero.'
+    description: 'Diseños que equilibran forma, durabilidad y elegancia natural para acompañarte cada día.'
   },
   {
     src: 'https://images.pexels.com/photos/23223842/pexels-photo-23223842.jpeg?auto=compress&cs=tinysrgb&w=1600',
     alt: 'Bolso rosa de cuero en una composición floral.',
     eyebrow: 'Selección cápsula',
     title: 'Color, textura y detalle artesanal.',
-    description: 'Imágenes gratuitas de Pexels usadas como referencia editorial.'
+    description: 'Materiales premium seleccionados a mano en tonos que se adaptan a tu estilo y personalidad.'
   },
   {
     src: 'https://images.pexels.com/photos/7953286/pexels-photo-7953286.jpeg?auto=compress&cs=tinysrgb&w=1600',
     alt: 'Bolso negro y rojo sobre una composición geométrica.',
     eyebrow: 'Estilo de estudio',
     title: 'Contraste limpio para la colección.',
-    description: 'El carrusel está preparado para reemplazarse luego por fotografía de marca.'
+    description: 'Una selección de contrastes audaces que dan carácter a cada conjunto, de día o de noche.'
   },
   {
     src: 'https://images.pexels.com/photos/5706269/pexels-photo-5706269.jpeg?auto=compress&cs=tinysrgb&w=1600',
     alt: 'Bolsos pequeños de cuero en un set minimalista.',
     eyebrow: 'Avance de temporada',
-    title: 'Silhuetas compactas y acabados suaves.',
-    description: 'Mantiene proporciones responsivas y navegación manual o automática.'
+    title: 'Siluetas compactas y acabados suaves.',
+    description: 'Formatos pensados para el movimiento moderno: ligeros, versátiles y con acabado de lujo artesanal.'
   }
 ];
 
@@ -114,7 +114,7 @@ function HeroCarousel() {
         </div>
 
         <p className="carousel-meta">
-          {String(activeIndex + 1).padStart(2, '0')} / {String(slides.length).padStart(2, '0')} · imágenes gratuitas vía Pexels
+          {String(activeIndex + 1).padStart(2, '0')} / {String(slides.length).padStart(2, '0')} · colección editorial Azami
         </p>
       </div>
     </section>

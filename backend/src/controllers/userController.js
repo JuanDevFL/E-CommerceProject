@@ -86,7 +86,7 @@ export async function registerUsuario(req, res, next) {
       return res.status(409).json({ error: 'El correo ya está registrado' });
     }
 
-    const passwordHash = await bcrypt.hash(password, 10);
+    const passwordHash = await bcrypt.hash(password, 12);
 
     const [result] = await pool.query(
       `INSERT INTO usuarios
@@ -190,7 +190,7 @@ export async function loginUsuario(req, res, next) {
     }
 
     if (!user.password.startsWith('$2')) {
-      const passwordHash = await bcrypt.hash(password, 10);
+      const passwordHash = await bcrypt.hash(password, 12);
       await pool.query('UPDATE usuarios SET password = ? WHERE id = ?', [passwordHash, user.id]);
     }
 
@@ -363,7 +363,7 @@ export async function resetPassword(req, res, next) {
     }
 
     const resetRecord = rows[0];
-    const passwordHash = await bcrypt.hash(password, 10);
+    const passwordHash = await bcrypt.hash(password, 12);
 
     await pool.query('UPDATE usuarios SET password = ? WHERE id = ?', [passwordHash, resetRecord.usuario_id]);
     await pool.query('UPDATE password_reset_tokens SET usado = TRUE WHERE id = ?', [resetRecord.id]);

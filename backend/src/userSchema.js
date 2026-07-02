@@ -142,6 +142,11 @@ export async function ensureOrdersTable() {
       payment_method       VARCHAR(40) NOT NULL DEFAULT 'sandbox_local',
       payment_status       VARCHAR(40) NOT NULL DEFAULT 'approved',
       direccion_envio_json TEXT NULL,
+      canal_venta          VARCHAR(30) NOT NULL DEFAULT 'web',
+      origen_registro      VARCHAR(30) NOT NULL DEFAULT 'plataforma',
+      vendedor_nombre      VARCHAR(120) NULL,
+      vendedor_email       VARCHAR(255) NULL,
+      notas_admin          TEXT NULL,
       creado_at            TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       INDEX idx_orden_usuario (usuario_id),
       INDEX idx_orden_estado (estado),
@@ -222,6 +227,26 @@ export async function ensureOrdersTable() {
 
   if (!existingColumns.has('direccion_envio_json')) {
     await pool.query('ALTER TABLE ordenes ADD COLUMN direccion_envio_json TEXT NULL AFTER payment_status');
+  }
+
+  if (!existingColumns.has('canal_venta')) {
+    await pool.query("ALTER TABLE ordenes ADD COLUMN canal_venta VARCHAR(30) NOT NULL DEFAULT 'web' AFTER direccion_envio_json");
+  }
+
+  if (!existingColumns.has('origen_registro')) {
+    await pool.query("ALTER TABLE ordenes ADD COLUMN origen_registro VARCHAR(30) NOT NULL DEFAULT 'plataforma' AFTER canal_venta");
+  }
+
+  if (!existingColumns.has('vendedor_nombre')) {
+    await pool.query('ALTER TABLE ordenes ADD COLUMN vendedor_nombre VARCHAR(120) NULL AFTER origen_registro');
+  }
+
+  if (!existingColumns.has('vendedor_email')) {
+    await pool.query('ALTER TABLE ordenes ADD COLUMN vendedor_email VARCHAR(255) NULL AFTER vendedor_nombre');
+  }
+
+  if (!existingColumns.has('notas_admin')) {
+    await pool.query('ALTER TABLE ordenes ADD COLUMN notas_admin TEXT NULL AFTER vendedor_email');
   }
 }
 

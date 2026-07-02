@@ -1,6 +1,10 @@
 const API_URL = import.meta.env.VITE_API_URL || 'https://e-commerceproject-production-1031.up.railway.app/api';
 const SESSION_STORAGE_KEY = 'azami-user';
 
+function isFormDataBody(body) {
+  return typeof FormData !== 'undefined' && body instanceof FormData;
+}
+
 function getStoredSession() {
   if (typeof window === 'undefined') {
     return null;
@@ -55,11 +59,15 @@ async function tryRefresh() {
 }
 
 async function request(endpoint, options = {}, _isRetry = false) {
-  const { auth = false, headers: customHeaders = {}, ...fetchOptions } = options;
+  const { auth = false, headers: customHeaders = {}, responseType = 'json', ...fetchOptions } = options;
   const headers = {
-    'Content-Type': 'application/json',
     ...customHeaders,
   };
+  const isFormData = isFormDataBody(fetchOptions.body);
+
+  if (!isFormData && !headers['Content-Type']) {
+    headers['Content-Type'] = 'application/json';
+  }
 
   if (auth) {
     const token = getStoredSession()?.token;
@@ -77,9 +85,12 @@ async function request(endpoint, options = {}, _isRetry = false) {
     ...fetchOptions,
   });
 
-  const data = await response.json().catch(() => ({}));
-
   if (!response.ok) {
+    const errorData = await response.json().catch(async () => {
+      const text = await response.text().catch(() => '');
+      return { error: text };
+    });
+
     // Si es 401 en una request autenticada, intentar renovar el access token
     if (response.status === 401 && auth && !_isRetry) {
       const newToken = await tryRefresh();
@@ -90,10 +101,18 @@ async function request(endpoint, options = {}, _isRetry = false) {
       // El refresh también falló → cerrar sesión
       window.dispatchEvent(new Event('azami-session-expired'));
     }
-    throw new Error(data.error || 'No se pudo completar la solicitud.');
+    throw new Error(errorData.error || 'No se pudo completar la solicitud.');
   }
 
-  return data;
+  if (responseType === 'blob') {
+    return response.blob();
+  }
+
+  if (responseType === 'text') {
+    return response.text();
+  }
+
+  return response.json().catch(() => ({}));
 }
 
 export async function fetchProductos() {
@@ -202,6 +221,22 @@ export async function updateAdminAnnouncement(announcementId, payload) {
   });
 }
 
+export async function downloadOfflineSalesTemplate() {
+  return request('/admin/offline-sales/template', {
+    method: 'GET',
+    auth: true,
+    responseType: 'blob',
+  });
+}
+
+export async function importOfflineSalesWorkbook(formData) {
+  return request('/admin/offline-sales/import', {
+    method: 'POST',
+    auth: true,
+    body: formData,
+  });
+}
+
 export async function forgotPassword(payload) {
   return request('/usuarios/forgot-password', {
     method: 'POST',
@@ -256,4 +291,14 @@ export async function updateAddressApi(addressId, payload) {
 
 export async function deleteAddressApi(addressId) {
   return request(`/cuenta/addresses/${addressId}`, { method: 'DELETE', auth: true });
+}
+
+export async function uploadProductImage(file) {
+  const formData = new FormData();
+  formData.append('imagen', file);
+  return request('/admin/upload-image', {
+    method: 'POST',
+    auth: true,
+    body: formData,
+  });
 }

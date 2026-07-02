@@ -102,6 +102,266 @@
   margin: 1rem 0;
 }
 
+/* ─── Receipt ─────────────────────────────────────────────────────────────── */
+.checkout-receipt {
+  max-width: 860px;
+  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  background: color-mix(in srgb, var(--color-background) 97%, var(--color-primary) 3%);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 18%, transparent);
+  border-radius: 1.4rem;
+  overflow: hidden;
+}
+
+.checkout-receipt-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.6rem 1.8rem 1.4rem;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 12%, transparent), transparent 60%);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-primary) 14%, transparent);
+}
+
+.checkout-receipt-status {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.checkout-receipt-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.8rem;
+  height: 2.8rem;
+  border-radius: 50%;
+  background: color-mix(in srgb, #22c55e 18%, transparent);
+  color: #22c55e;
+  font-size: 1.3rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  border: 2px solid color-mix(in srgb, #22c55e 35%, transparent);
+}
+
+.checkout-receipt-print {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.55rem 1rem;
+  border-radius: 9999px;
+  border: 1.5px solid color-mix(in srgb, var(--color-primary) 30%, transparent);
+  background: transparent;
+  color: var(--color-primary);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 180ms ease, color 180ms ease;
+  flex-shrink: 0;
+}
+
+.checkout-receipt-print:hover {
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+}
+
+.checkout-receipt-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-primary) 12%, transparent);
+}
+
+.checkout-receipt-meta > div {
+  flex: 1;
+  min-width: 140px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.9rem 1.8rem;
+  border-right: 1px solid color-mix(in srgb, var(--color-primary) 12%, transparent);
+}
+
+.checkout-receipt-meta > div:last-child {
+  border-right: none;
+}
+
+.checkout-receipt-meta span {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-muted);
+}
+
+.checkout-receipt-meta strong {
+  font-size: 0.9rem;
+}
+
+.checkout-receipt-approved {
+  color: #22c55e !important;
+}
+
+.checkout-receipt-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+
+.checkout-receipt-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0;
+}
+
+.checkout-receipt-col:first-child {
+  border-right: 1px solid color-mix(in srgb, var(--color-primary) 12%, transparent);
+}
+
+.checkout-receipt-section {
+  padding: 1.2rem 1.8rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-primary) 10%, transparent);
+}
+
+.checkout-receipt-section:last-child {
+  border-bottom: none;
+}
+
+.checkout-receipt-section-title {
+  margin: 0 0 0.7rem;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--color-muted);
+  font-weight: 700;
+}
+
+.checkout-receipt-items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.checkout-receipt-item {
+  display: grid;
+  grid-template-columns: 2rem 1fr auto;
+  gap: 0.5rem;
+  align-items: baseline;
+  font-size: 0.88rem;
+}
+
+.checkout-receipt-item-qty {
+  color: var(--color-muted);
+  font-size: 0.82rem;
+}
+
+.checkout-receipt-item-name {
+  color: var(--color-text);
+}
+
+.checkout-receipt-item-price {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.checkout-receipt-data {
+  margin: 0 0 0.2rem;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--color-text);
+}
+
+.checkout-receipt-totals {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.checkout-receipt-total-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 0.88rem;
+  color: var(--color-muted);
+}
+
+.checkout-receipt-total-row.is-total {
+  padding-top: 0.5rem;
+  margin-top: 0.25rem;
+  border-top: 1px solid color-mix(in srgb, var(--color-primary) 16%, transparent);
+  color: var(--color-heading);
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.checkout-receipt-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  padding: 1.2rem 1.8rem;
+  border-top: 1px solid color-mix(in srgb, var(--color-primary) 14%, transparent);
+  background: color-mix(in srgb, var(--color-primary) 4%, transparent);
+}
+
+@media (max-width: 640px) {
+  .checkout-receipt-body {
+    grid-template-columns: 1fr;
+  }
+
+  .checkout-receipt-col:first-child {
+    border-right: none;
+    border-bottom: 1px solid color-mix(in srgb, var(--color-primary) 12%, transparent);
+  }
+
+  .checkout-receipt-meta > div {
+    border-right: none;
+    border-bottom: 1px solid color-mix(in srgb, var(--color-primary) 10%, transparent);
+    padding: 0.7rem 1.2rem;
+  }
+
+  .checkout-receipt-header {
+    padding: 1.2rem;
+    flex-wrap: wrap;
+    gap: 0.8rem;
+  }
+
+  .checkout-receipt-section {
+    padding: 1rem 1.2rem;
+  }
+
+  .checkout-receipt-footer {
+    padding: 1rem 1.2rem;
+    flex-direction: column;
+  }
+
+  .checkout-receipt-footer .checkout-btn {
+    width: 100%;
+  }
+}
+
+@media print {
+  .checkout-receipt-print,
+  .checkout-receipt-footer {
+    display: none !important;
+  }
+
+  .checkout-receipt {
+    border: 1px solid #ccc;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .checkout-page {
+    padding: 0;
+    background: white;
+  }
+}
+
 .checkout-card-heading {
   display: flex;
   justify-content: space-between;
@@ -325,6 +585,23 @@
 .checkout-btn-whatsapp {
   background: #25d366;
   color: #ffffff;
+}
+
+.checkout-btn-wompi {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
+  color: var(--button-text, #ffffff);
+  letter-spacing: 0.01em;
+  gap: 0.5rem;
+  transition: filter 220ms ease, transform 220ms ease;
+}
+
+.checkout-btn-wompi:hover:not(:disabled) {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+.checkout-btn-wompi:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .checkout-btn-secondary {

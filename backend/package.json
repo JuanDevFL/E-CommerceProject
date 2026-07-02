@@ -8,10 +8,12 @@
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
     "seed": "node src/scripts/seedProducts.js",
-    "seed:users": "node src/scripts/seedUsers.js"
+    "seed:users": "node src/scripts/seedUsers.js",
+    "template:offline-sales": "node src/scripts/generateOfflineSalesTemplate.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
+    "cloudinary": "^2.10.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^16.1.4",
@@ -19,7 +21,9 @@
     "express-rate-limit": "^8.5.1",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.3",
-    "mysql2": "^3.6.0"
+    "multer": "^2.2.0",
+    "mysql2": "^3.6.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"

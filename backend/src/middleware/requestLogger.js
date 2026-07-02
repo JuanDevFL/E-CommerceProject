@@ -37,6 +37,7 @@ function sanitizeValue(value, key = '') {
 }
 
 function shouldLogAuthPayload(req) {
+  if (process.env.NODE_ENV === 'production') return false;
   return normalizeBooleanEnv(process.env.LOG_AUTH_PAYLOAD, false)
     && req.method === 'POST'
     && req.originalUrl === '/api/usuarios/login';
