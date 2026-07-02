@@ -3,17 +3,29 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-// Railway MySQL plugin expone MYSQLHOST/MYSQLUSER/etc.
-// Se aceptan ambos prefijos para funcionar local y en Railway sin tocar variables.
+// Prioriza Railway para mantener un único entorno de datos.
+// Solo usa DB_* como respaldo si no existen las variables MYSQL*.
+const resolvedDbConfig = {
+  host: process.env.MYSQLHOST || process.env.DB_HOST || 'localhost',
+  port: Number(process.env.MYSQLPORT || process.env.DB_PORT || 3306),
+  user: process.env.MYSQLUSER || process.env.DB_USER || 'root',
+  password: process.env.MYSQLPASSWORD || process.env.DB_PASSWORD || '',
+  database: process.env.MYSQLDATABASE || process.env.DB_NAME || 'ecommerce_db',
+};
+
 const pool = mysql.createPool({
-  host: process.env.DB_HOST || process.env.MYSQLHOST || 'localhost',
-  port: Number(process.env.DB_PORT || process.env.MYSQLPORT || 3306),
-  user: process.env.DB_USER || process.env.MYSQLUSER || 'root',
-  password: process.env.DB_PASSWORD || process.env.MYSQLPASSWORD || '',
-  database: process.env.DB_NAME || process.env.MYSQLDATABASE || 'ecommerce_db',
+  ...resolvedDbConfig,
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
 });
+
+export function getDbRuntimeInfo() {
+  const usesRailway = Boolean(process.env.MYSQLHOST && process.env.MYSQLDATABASE);
+  return {
+    ...resolvedDbConfig,
+    usesRailway,
+  };
+}
 
 export default pool;

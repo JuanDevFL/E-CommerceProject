@@ -12,6 +12,7 @@ import adminRoutes from './routes/adminRoutes.js';
 import announcementRoutes from './routes/announcementRoutes.js';
 import productRoutes from './routes/productRoutes.js';
 import userRoutes from './routes/userRoutes.js';
+import { getDbRuntimeInfo } from './db.js';
 import { ensureActividadLogsTable, ensureAddressesTable, ensureAnnouncementsTable, ensureOrdersTable, ensurePasswordResetTokensTable, ensureRefreshTokensTable, ensureUsuariosTable } from './userSchema.js';
 
 dotenv.config();
@@ -82,7 +83,13 @@ async function bootstrap() {
     }
 
     app.listen(PORT, () => {
+      const dbInfo = getDbRuntimeInfo();
+      const dbModeLabel = dbInfo.usesRailway
+        ? 'Base de datos en PRODUCCION (Railway)'
+        : 'Base de datos fuera de Railway (fallback local)';
+
       console.log(`Server running on http://localhost:${PORT}`);
+      console.log(`[DB] ${dbModeLabel}: ${dbInfo.database} @ ${dbInfo.host}:${dbInfo.port}`);
     });
   } catch (error) {
     console.error('No se pudo preparar la tabla de usuarios:', error.message);
