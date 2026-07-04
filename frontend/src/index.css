@@ -1783,7 +1783,7 @@ body {
 }
 
 .fullscreen-menu-panel .fullscreen-panel-header {
-  background: var(--color-surface);
+  background: transparent;
 }
 
 .panel-close-button {
@@ -1878,6 +1878,101 @@ body {
 .submenu-link:focus-visible {
   color: var(--color-hover-ink);
   transform: translateX(6px);
+}
+
+/* ─── Visual fullscreen menu ─── */
+.menu-body {
+  display: grid;
+  grid-template-columns: 1fr 1.7fr;
+  gap: 1.5rem;
+  padding: 1rem 0 2rem;
+  height: calc(100vh - 5rem);
+  align-items: stretch;
+}
+
+.menu-brand-column {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: clamp(1.5rem, 3vw, 2.5rem);
+  background: linear-gradient(150deg, var(--color-surface), var(--color-surface-alt));
+  border-radius: 1.25rem;
+  overflow: hidden;
+}
+
+.menu-brand-eyebrow {
+  margin: 0;
+  font-size: clamp(2.8rem, 7vw, 5.5rem);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--color-primary);
+  line-height: 1;
+  font-family: var(--font-primary);
+}
+
+.menu-brand-tagline {
+  margin: 0.65rem 0 0;
+  font-size: 0.78rem;
+  color: var(--color-muted);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.menu-nav-section {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0.5rem 0;
+}
+
+.menu-nav-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.menu-nav-btn {
+  width: 100%;
+  display: flex;
+  align-items: baseline;
+  gap: 1.2rem;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 60%, transparent 40%);
+  padding: clamp(0.9rem, 1.8vw, 1.4rem) 0.25rem;
+  cursor: pointer;
+  color: var(--color-heading);
+  text-align: left;
+  transition: color 240ms ease, padding-left 240ms ease, border-color 240ms ease;
+  font-family: var(--font-primary);
+}
+
+.menu-nav-btn:hover,
+.menu-nav-btn:focus-visible {
+  color: var(--color-primary);
+  padding-left: 0.65rem;
+  border-bottom-color: var(--color-primary);
+  outline: none;
+}
+
+.menu-nav-idx {
+  font-size: 0.7rem;
+  color: var(--color-muted);
+  letter-spacing: 0.1em;
+  font-weight: 500;
+  min-width: 2.2ch;
+  flex-shrink: 0;
+  font-family: sans-serif;
+}
+
+.menu-nav-label {
+  font-size: clamp(1.5rem, 3vw, 2.5rem);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1.1;
 }
 
 .user-panel {

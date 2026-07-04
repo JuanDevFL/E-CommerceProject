@@ -47,26 +47,24 @@ function AuthPage({ onAuthSuccess }) {
         return;
       }
 
-      const payload = mode === 'register'
-        ? (() => {
-            if (!formState.acceptTerms || !formState.acceptDataPolicy) {
-              throw new Error('Debes aceptar Términos y autorizar el tratamiento de datos para crear tu cuenta.');
-            }
+      if (mode === 'register' && (!formState.acceptTerms || !formState.acceptDataPolicy)) {
+        throw new Error('Debes aceptar Términos y autorizar el tratamiento de datos para crear tu cuenta.');
+      }
 
-            return registerUsuario({
-              nombre: formState.nombre,
-              email: formState.email,
-              password: formState.password,
-              acceptTerms: formState.acceptTerms,
-              acceptDataPolicy: formState.acceptDataPolicy,
-              acceptMarketing: formState.acceptMarketing,
-              consentVersion: '2026-05-07',
-            });
-          })()
-        : await loginUsuario({
+      const payload = await (mode === 'register'
+        ? registerUsuario({
+            nombre: formState.nombre,
             email: formState.email,
             password: formState.password,
-          });
+            acceptTerms: formState.acceptTerms,
+            acceptDataPolicy: formState.acceptDataPolicy,
+            acceptMarketing: formState.acceptMarketing,
+            consentVersion: '2026-05-07',
+          })
+        : loginUsuario({
+            email: formState.email,
+            password: formState.password,
+          }));
 
       onAuthSuccess(payload);
       navigate(payload.rol === 'admin' ? '/admin' : '/');

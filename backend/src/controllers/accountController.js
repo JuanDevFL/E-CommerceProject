@@ -258,6 +258,38 @@ export async function createMyOrder(req, res) {
         return res.status(409).json({ error: 'La referencia del pedido ya existe. Recarga el checkout e intenta otra vez.' });
       }
 
+      if (paymentStatus === 'approved') {
+        Promise.all([
+          pool.query('SELECT total, moneda, direccion_envio_json FROM ordenes WHERE id = ? LIMIT 1', [existing.id]),
+          pool.query(
+            `SELECT oi.cantidad AS quantity, oi.precio AS unitPrice, p.nombre
+             FROM orden_items oi
+             JOIN productos p ON p.id = oi.producto_id
+             WHERE oi.orden_id = ?`,
+            [existing.id]
+          ),
+        ]).then(([[orderRows], [itemRows]]) => {
+          if (!orderRows.length) return;
+          const ord = orderRows[0];
+          let addr = {};
+          try { addr = JSON.parse(ord.direccion_envio_json || '{}'); } catch { /* */ }
+          return sendOrderConfirmationEmail({
+            to: req.user.email,
+            customerName: req.user.nombre,
+            order: {
+              referencia_pago: reference,
+              total: ord.total,
+              moneda: ord.moneda || STORE_CURRENCY,
+              estado: 'pago_confirmado',
+              direccion_envio: addr,
+              items: itemRows,
+            },
+          });
+        }).catch((err) => {
+          console.error('No se pudo enviar correo de confirmación (usuario, actualización):', err.message);
+        });
+      }
+
       return res.status(200).json({
         id: existing.id,
         referencia_pago: reference,

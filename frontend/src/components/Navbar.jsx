@@ -117,13 +117,11 @@ function Navbar({
   const [isOpen, setIsOpen] = useState(false);
   const [isUserPanelOpen, setIsUserPanelOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [activeSubmenu, setActiveSubmenu] = useState('');
   const isAdmin = user?.role === 'admin';
   const isAdminPage = location.pathname.startsWith('/admin');
 
   const closeMenu = () => {
     setIsOpen(false);
-    setActiveSubmenu('');
   };
 
   const closeUserPanel = () => setIsUserPanelOpen(false);
@@ -135,31 +133,9 @@ function Navbar({
     }
   };
 
-  const menuItems = [
-    {
-      label: 'Colecciones',
-      subOptions: [
-        { label: 'Bolsos premium', route: '/catalogo' },
-        { label: 'Accesorios', route: '/catalogo' },
-        { label: 'Edicion 2025', route: '/catalogo' }
-      ]
-    },
-    {
-      label: 'Nosotros',
-      subOptions: [
-        { label: 'Nuestra historia', route: '/nosotros' },
-        { label: 'Materiales', route: '/nosotros' },
-        { label: 'Proceso artesanal', route: '/nosotros' }
-      ]
-    },
-    {
-      label: 'Contacto',
-      subOptions: [
-        { label: 'Atencion directa', route: '/nosotros' },
-        { label: 'Pedidos especiales', route: '/nosotros' },
-        { label: 'Postventa', route: '/nosotros' }
-      ]
-    }
+  const navLinks = [
+    { label: 'Catálogo', route: '/catalogo' },
+    { label: 'Nosotros', route: '/nosotros' },
   ];
 
   return (
@@ -196,45 +172,28 @@ function Navbar({
               <button type="button" className="btn-icon panel-close-button px-4 py-2 text-xs font-semibold" onClick={closeMenu}>Cerrar</button>
             </div>
 
-            <ul className="fullscreen-menu-list">
-              {menuItems.map((item) => (
-                <li
-                  key={item.label}
-                  className={`menu-item-group ${activeSubmenu === item.label ? 'is-open' : ''}`}
-                  onMouseEnter={() => setActiveSubmenu(item.label)}
-                  onMouseLeave={() => setActiveSubmenu('')}
-                >
-                  <button
-                    type="button"
-                    className="menu-main-btn"
-                    onClick={() => setActiveSubmenu((prev) => (prev === item.label ? '' : item.label))}
-                  >
-                    <span className="menu-main-label">{item.label}</span>
-                    <span className="menu-main-plus">+</span>
-                  </button>
-
-                  <ul className="submenu-list">
-                    {item.subOptions.map((sub) => (
-                      <li key={sub.label}>
-                        {sub.route ? (
-                          <button
-                            type="button"
-                            className="submenu-link"
-                            onClick={() => { closeMenu(); navigate(sub.route); }}
-                          >
-                            {sub.label}
-                          </button>
-                        ) : (
-                          <a href={sub.href} className="submenu-link" onClick={closeMenu}>
-                            {sub.label}
-                          </a>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                </li>
-              ))}
-            </ul>
+            <div className="menu-body">
+              <div className="menu-brand-column">
+                <p className="menu-brand-eyebrow">AZAMI</p>
+                <p className="menu-brand-tagline">Artesanía en cuero fino.</p>
+              </div>
+              <nav className="menu-nav-section" aria-label="Navegación principal">
+                <ul className="menu-nav-list">
+                  {navLinks.map((link, i) => (
+                    <li key={link.label}>
+                      <button
+                        type="button"
+                        className="menu-nav-btn"
+                        onClick={() => { closeMenu(); navigate(link.route); }}
+                      >
+                        <span className="menu-nav-idx">{String(i + 1).padStart(2, '0')}</span>
+                        <span className="menu-nav-label">{link.label}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </nav>
+            </div>
           </div>
         </div>
 
@@ -412,43 +371,22 @@ function Navbar({
           <button type="button" className="btn-icon panel-close-button px-4 py-2 text-xs font-semibold" onClick={closeMenu}>Cerrar</button>
         </div>
 
-        <ul className="fullscreen-menu-list">
-          {menuItems.map((item) => (
-            <li
-              key={item.label}
-              className={`menu-item-group ${activeSubmenu === item.label ? 'is-open' : ''}`}
-            >
-              <button
-                type="button"
-                className="menu-main-btn"
-                onClick={() => setActiveSubmenu((prev) => (prev === item.label ? '' : item.label))}
-              >
-                <span className="menu-main-label">{item.label}</span>
-                <span className="menu-main-plus">+</span>
-              </button>
-
-              <ul className="submenu-list">
-                {item.subOptions.map((sub) => (
-                  <li key={sub.label}>
-                    {sub.route ? (
-                      <button
-                        type="button"
-                        className="submenu-link"
-                        onClick={() => { closeMenu(); navigate(sub.route); }}
-                      >
-                        {sub.label}
-                      </button>
-                    ) : (
-                      <a href={sub.href} className="submenu-link" onClick={closeMenu}>
-                        {sub.label}
-                      </a>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </li>
-          ))}
-        </ul>
+        <nav className="menu-nav-section" aria-label="Navegación principal">
+          <ul className="menu-nav-list">
+            {navLinks.map((link, i) => (
+              <li key={link.label}>
+                <button
+                  type="button"
+                  className="menu-nav-btn"
+                  onClick={() => { closeMenu(); navigate(link.route); }}
+                >
+                  <span className="menu-nav-idx">{String(i + 1).padStart(2, '0')}</span>
+                  <span className="menu-nav-label">{link.label}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </nav>
       </div>
 
       <div

@@ -50,6 +50,39 @@ async function updateOrderByReference({ reference, paymentProvider, paymentMetho
   return result.affectedRows > 0;
 }
 
+async function fetchAndSendOrderEmail(reference) {
+  const [orderRows] = await pool.query(
+    'SELECT id, cliente_email, cliente_nombre, referencia_pago, total, moneda, direccion_envio_json FROM ordenes WHERE referencia_pago = ? LIMIT 1',
+    [reference]
+  );
+  if (!orderRows.length || !orderRows[0].cliente_email) return;
+  const order = orderRows[0];
+
+  const [itemRows] = await pool.query(
+    `SELECT oi.cantidad AS quantity, oi.precio AS unitPrice, p.nombre
+     FROM orden_items oi
+     JOIN productos p ON p.id = oi.producto_id
+     WHERE oi.orden_id = ?`,
+    [order.id]
+  );
+
+  let direccionEnvio = {};
+  try { direccionEnvio = JSON.parse(order.direccion_envio_json || '{}'); } catch { /* ignore */ }
+
+  return sendOrderConfirmationEmail({
+    to: order.cliente_email,
+    customerName: order.cliente_nombre,
+    order: {
+      referencia_pago: order.referencia_pago,
+      total: order.total,
+      moneda: order.moneda,
+      estado: 'pago_confirmado',
+      direccion_envio: direccionEnvio,
+      items: itemRows,
+    },
+  });
+}
+
 function sanitizeOrderItems(rawItems) {
   if (!Array.isArray(rawItems)) {
     return [];
@@ -215,6 +248,12 @@ export async function createGuestOrder(req, res) {
 
       if (!updated) {
         return res.status(409).json({ error: 'La referencia del pedido ya existe. Recarga el checkout e intenta otra vez.' });
+      }
+
+      if (paymentStatus === 'approved') {
+        fetchAndSendOrderEmail(reference).catch((err) => {
+          console.error('No se pudo enviar correo de confirmación (actualizar orden invitado):', err.message);
+        });
       }
 
       return res.status(200).json({
@@ -467,6 +506,12 @@ export async function handleWompiWebhook(req, res) {
     ip: clientIp(req),
     userAgent: req.headers['user-agent'] || null,
   });
+
+  if (status === 'approved') {
+    fetchAndSendOrderEmail(reference).catch((err) => {
+      console.error('No se pudo enviar correo de confirmación vía webhook Wompi:', err.message);
+    });
+  }
 
   return res.status(200).json({ ok: true, updated: true, reference, paymentStatus: status });
 }
