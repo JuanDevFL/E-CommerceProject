@@ -173,26 +173,21 @@ function Navbar({
             </div>
 
             <div className="menu-body">
-              <div className="menu-brand-column">
-                <p className="menu-brand-eyebrow">AZAMI</p>
-                <p className="menu-brand-tagline">Artesanía en cuero fino.</p>
-              </div>
-              <nav className="menu-nav-section" aria-label="Navegación principal">
-                <ul className="menu-nav-list">
-                  {navLinks.map((link, i) => (
-                    <li key={link.label}>
-                      <button
-                        type="button"
-                        className="menu-nav-btn"
-                        onClick={() => { closeMenu(); navigate(link.route); }}
-                      >
-                        <span className="menu-nav-idx">{String(i + 1).padStart(2, '0')}</span>
-                        <span className="menu-nav-label">{link.label}</span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </nav>
+              <ul className="menu-nav-list">
+                {navLinks.map((link, i) => (
+                  <li key={link.label}>
+                    <button
+                      type="button"
+                      className="menu-nav-btn"
+                      onClick={() => { closeMenu(); navigate(link.route); }}
+                    >
+                      <span className="menu-nav-idx">{String(i + 1).padStart(2, '0')}</span>
+                      <span className="menu-nav-label">{link.label}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              <p className="menu-brand-tag">AZAMI — Artesanía en cuero fino.</p>
             </div>
           </div>
         </div>
@@ -371,7 +366,7 @@ function Navbar({
           <button type="button" className="btn-icon panel-close-button px-4 py-2 text-xs font-semibold" onClick={closeMenu}>Cerrar</button>
         </div>
 
-        <nav className="menu-nav-section" aria-label="Navegación principal">
+        <div className="menu-body">
           <ul className="menu-nav-list">
             {navLinks.map((link, i) => (
               <li key={link.label}>
@@ -386,7 +381,8 @@ function Navbar({
               </li>
             ))}
           </ul>
-        </nav>
+          <p className="menu-brand-tag">AZAMI — Artesanía en cuero fino.</p>
+        </div>
       </div>
 
       <div
