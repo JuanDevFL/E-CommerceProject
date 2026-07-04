@@ -1885,8 +1885,8 @@ body {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 3rem;
-  padding: 2rem clamp(2rem, 6vw, 5rem);
+  gap: 1.5rem;
+  padding: 1.5rem clamp(1.2rem, 3vw, 2.5rem);
   height: calc(100% - 4rem);
 }
 
@@ -1902,16 +1902,17 @@ body {
   width: 100%;
   display: flex;
   align-items: baseline;
-  gap: 1.2rem;
+  gap: 1rem;
   background: transparent;
   border: none;
   border-bottom: 1px solid color-mix(in srgb, var(--color-border) 60%, transparent 40%);
-  padding: clamp(1rem, 2vw, 1.6rem) 0.25rem;
+  padding: clamp(0.75rem, 1.5vw, 1.2rem) 0.25rem;
   cursor: pointer;
   color: var(--color-heading);
   text-align: left;
   transition: color 240ms ease, padding-left 240ms ease, border-color 240ms ease;
   font-family: var(--font-primary);
+  overflow: hidden;
 }
 
 .menu-nav-btn:hover,
@@ -1933,11 +1934,15 @@ body {
 }
 
 .menu-nav-label {
-  font-size: clamp(2.2rem, 5.5vw, 4.8rem);
+  font-size: clamp(1.3rem, 4vw, 2.4rem);
   font-weight: 600;
   letter-spacing: 0.03em;
   text-transform: uppercase;
   line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .menu-brand-tag {
