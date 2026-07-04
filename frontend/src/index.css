@@ -1783,7 +1783,7 @@ body {
 }
 
 .fullscreen-menu-panel .fullscreen-panel-header {
-  background: var(--color-panel);
+  background: transparent;
 }
 
 .panel-close-button {
