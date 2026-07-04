@@ -191,10 +191,7 @@ function Navbar({
             aria-hidden={!isOpen}
             onMouseLeave={() => handleDesktopPanelMouseLeave(closeMenu)}
           >
-            <div className="fullscreen-panel-header">
-              <span className="text-lg font-semibold tracking-[0.24em] text-primary uppercase">Menu</span>
-              <button type="button" className="btn-icon panel-close-button px-4 py-2 text-xs font-semibold" onClick={closeMenu}>Cerrar</button>
-            </div>
+            <button type="button" className="menu-close-btn" onClick={closeMenu} aria-label="Cerrar menú">Cerrar</button>
 
             <ul className="fullscreen-menu-list">
               {menuItems.map((item) => (
@@ -401,10 +398,7 @@ function Navbar({
         className={`fixed inset-0 z-[63] navbar-panel fullscreen-menu-panel transition-all duration-300 lg:hidden ${isOpen ? 'opacity-100 scale-100 translate-y-0' : 'pointer-events-none opacity-0 scale-95 -translate-y-2'}`}
         aria-hidden={!isOpen}
       >
-        <div className="fullscreen-panel-header">
-          <span className="text-lg font-semibold tracking-[0.24em] text-primary uppercase">Menu</span>
-          <button type="button" className="btn-icon panel-close-button px-4 py-2 text-xs font-semibold" onClick={closeMenu}>Cerrar</button>
-        </div>
+        <button type="button" className="menu-close-btn" onClick={closeMenu} aria-label="Cerrar menú">Cerrar</button>
 
         <ul className="fullscreen-menu-list">
           {menuItems.map((item) => (
