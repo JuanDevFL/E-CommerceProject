@@ -141,25 +141,25 @@ function Navbar({
       subOptions: [
         { label: 'Bolsos premium', route: '/catalogo' },
         { label: 'Accesorios', route: '/catalogo' },
-        { label: 'Edición 2025', route: '/catalogo' },
-      ],
+        { label: 'Edicion 2025', route: '/catalogo' }
+      ]
     },
     {
       label: 'Nosotros',
       subOptions: [
         { label: 'Nuestra historia', route: '/nosotros' },
         { label: 'Materiales', route: '/nosotros' },
-        { label: 'Proceso artesanal', route: '/nosotros' },
-      ],
+        { label: 'Proceso artesanal', route: '/nosotros' }
+      ]
     },
     {
       label: 'Contacto',
       subOptions: [
-        { label: 'Atención directa', route: '/nosotros' },
+        { label: 'Atencion directa', route: '/nosotros' },
         { label: 'Pedidos especiales', route: '/nosotros' },
-        { label: 'Postventa', route: '/nosotros' },
-      ],
-    },
+        { label: 'Postventa', route: '/nosotros' }
+      ]
+    }
   ];
 
   return (
@@ -216,13 +216,19 @@ function Navbar({
                   <ul className="submenu-list">
                     {item.subOptions.map((sub) => (
                       <li key={sub.label}>
-                        <button
-                          type="button"
-                          className="submenu-link"
-                          onClick={() => { closeMenu(); navigate(sub.route); }}
-                        >
-                          {sub.label}
-                        </button>
+                        {sub.route ? (
+                          <button
+                            type="button"
+                            className="submenu-link"
+                            onClick={() => { closeMenu(); navigate(sub.route); }}
+                          >
+                            {sub.label}
+                          </button>
+                        ) : (
+                          <a href={sub.href} className="submenu-link" onClick={closeMenu}>
+                            {sub.label}
+                          </a>
+                        )}
                       </li>
                     ))}
                   </ul>
@@ -424,13 +430,19 @@ function Navbar({
               <ul className="submenu-list">
                 {item.subOptions.map((sub) => (
                   <li key={sub.label}>
-                    <button
-                      type="button"
-                      className="submenu-link"
-                      onClick={() => { closeMenu(); navigate(sub.route); }}
-                    >
-                      {sub.label}
-                    </button>
+                    {sub.route ? (
+                      <button
+                        type="button"
+                        className="submenu-link"
+                        onClick={() => { closeMenu(); navigate(sub.route); }}
+                      >
+                        {sub.label}
+                      </button>
+                    ) : (
+                      <a href={sub.href} className="submenu-link" onClick={closeMenu}>
+                        {sub.label}
+                      </a>
+                    )}
                   </li>
                 ))}
               </ul>

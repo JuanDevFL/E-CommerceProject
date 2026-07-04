@@ -1783,7 +1783,7 @@ body {
 }
 
 .fullscreen-menu-panel .fullscreen-panel-header {
-  background: var(--color-panel);
+  background: var(--color-surface);
 }
 
 .panel-close-button {
@@ -1854,21 +1854,15 @@ body {
 .submenu-list {
   list-style: none;
   margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 0.3rem;
-  max-height: 0;
-  overflow: hidden;
-  opacity: 0;
-  transition: max-height 320ms cubic-bezier(0.22, 1, 0.36, 1), opacity 220ms ease;
+  padding: 0 0 0.85rem 0;
+  display: none;
 }
 
 .menu-item-group:hover .submenu-list,
 .menu-item-group:focus-within .submenu-list,
 .menu-item-group.is-open .submenu-list {
-  max-height: 12rem;
-  opacity: 1;
-  padding-bottom: 0.85rem;
+  display: grid;
+  gap: 0.3rem;
 }
 
 .submenu-link {
@@ -1884,79 +1878,6 @@ body {
 .submenu-link:focus-visible {
   color: var(--color-hover-ink);
   transform: translateX(6px);
-}
-
-/* ─── Visual fullscreen menu ─── */
-.menu-body {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 1.5rem;
-  padding: 1.5rem clamp(1.2rem, 3vw, 2.5rem);
-  height: calc(100% - 4rem);
-}
-
-.menu-nav-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.menu-nav-btn {
-  width: 100%;
-  display: flex;
-  align-items: baseline;
-  gap: 1rem;
-  background: transparent;
-  border: none;
-  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 60%, transparent 40%);
-  padding: clamp(0.75rem, 1.5vw, 1.2rem) 0.25rem;
-  cursor: pointer;
-  color: var(--color-heading);
-  text-align: left;
-  transition: color 240ms ease, padding-left 240ms ease, border-color 240ms ease;
-  font-family: var(--font-primary);
-  overflow: hidden;
-}
-
-.menu-nav-btn:hover,
-.menu-nav-btn:focus-visible {
-  color: var(--color-primary);
-  padding-left: 0.65rem;
-  border-bottom-color: var(--color-primary);
-  outline: none;
-}
-
-.menu-nav-idx {
-  font-size: 0.7rem;
-  color: var(--color-muted);
-  letter-spacing: 0.1em;
-  font-weight: 500;
-  min-width: 2.2ch;
-  flex-shrink: 0;
-  font-family: sans-serif;
-}
-
-.menu-nav-label {
-  font-size: clamp(1.3rem, 4vw, 2.4rem);
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-  line-height: 1.1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
-}
-
-.menu-brand-tag {
-  margin: 0;
-  font-size: 0.72rem;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: var(--color-muted);
 }
 
 .user-panel {
