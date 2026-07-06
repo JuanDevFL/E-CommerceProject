@@ -9,6 +9,7 @@
     "start": "node src/server.js",
     "seed": "node src/scripts/seedProducts.js",
     "seed:users": "node src/scripts/seedUsers.js",
+    "seed:tipos": "node src/scripts/seedProductTypes.js",
     "template:offline-sales": "node src/scripts/generateOfflineSalesTemplate.js"
   },
   "dependencies": {

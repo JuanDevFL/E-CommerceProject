@@ -139,9 +139,11 @@ function Navbar({
     {
       label: 'Colecciones',
       subOptions: [
-        { label: 'Bolsos premium', route: '/catalogo' },
-        { label: 'Accesorios', route: '/catalogo' },
-        { label: 'Edicion 2025', route: '/catalogo' }
+        { label: 'Carteras',       route: '/catalogo?tipo=Carteras' },
+        { label: 'Mini morrales',  route: '/catalogo?tipo=Mini morrales' },
+        { label: 'Bandoleras',     route: '/catalogo?tipo=Bandoleras' },
+        { label: 'Cross Body',     route: '/catalogo?tipo=Cross Body' },
+        { label: 'Todos',          route: '/catalogo' },
       ]
     },
     {
