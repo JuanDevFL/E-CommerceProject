@@ -84,42 +84,35 @@ function FeaturedCarousel({ products }) {
 }
 
 function VisualStorySection({ products }) {
-  const visualItems = (products && products.length > 0 ? products : curatedProducts).slice(0, 6);
+  const visualItems = (products && products.length > 0 ? products : curatedProducts).slice(0, 8);
 
   return (
     <section className="site-section bg-surface py-10 sm:py-14">
       <div className="site-section-inner">
         <div className="mb-8 text-center">
           <p className="text-xs uppercase tracking-[0.34em] text-muted">Galería Azami</p>
-          <h2 className="mt-3 text-3xl font-semibold tracking-tight text-heading sm:text-4xl">Más visual, menos texto</h2>
+          <h2 className="mt-3 text-3xl font-semibold tracking-tight text-heading sm:text-4xl">Piezas destacadas</h2>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-12">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {visualItems.map((item, index) => {
-            const isPrimary = index === 0;
-            const isWide = index === 3 || index === 4;
-            const cardClass = isPrimary
-              ? 'lg:col-span-7 lg:row-span-2'
-              : isWide
-                ? 'lg:col-span-4'
-                : 'lg:col-span-5';
-
             return (
               <article
                 key={`${item.id || item.nombre}-${index}`}
-                className={`group relative overflow-hidden rounded-2xl border border-border/60 bg-background-alt ${cardClass}`}
+                className="group overflow-hidden rounded-2xl border border-border/60 bg-background-alt"
               >
                 <img
                   src={item.imagen_url}
                   alt={item.nombre}
-                  className={`w-full object-cover transition duration-500 group-hover:scale-105 ${isPrimary ? 'h-[20rem] sm:h-[28rem]' : 'h-56 sm:h-64'}`}
+                  className="h-64 w-full object-cover transition duration-500 group-hover:scale-105"
                   loading="lazy"
                   decoding="async"
                   referrerPolicy="no-referrer"
                 />
 
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/65 to-transparent p-4 text-white">
-                  <p className="text-sm font-semibold tracking-wide">{item.nombre}</p>
+                <div className="space-y-1 p-4">
+                  <p className="line-clamp-1 text-sm font-semibold text-heading">{item.nombre}</p>
+                  <p className="text-xs uppercase tracking-[0.22em] text-muted">{formatPrice(item.precio)}</p>
                 </div>
               </article>
             );
