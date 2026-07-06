@@ -147,24 +147,6 @@ function Navbar({
       ],
     },
     {
-      label: 'Colores',
-      subOptions: [
-        { label: 'Negro',                route: '/catalogo?tono=Negro' },
-        { label: 'Talco',                route: '/catalogo?tono=Talco' },
-        { label: 'Beige',                route: '/catalogo?tono=Beige' },
-        { label: 'Vinotinto',            route: '/catalogo?tono=Vinotinto' },
-        { label: 'Azul',                 route: '/catalogo?tono=Azul' },
-        { label: 'Palo de rosa',         route: '/catalogo?tono=Palo de rosa' },
-        { label: 'Verde oliva',          route: '/catalogo?tono=Verde oliva' },
-        { label: 'Amarillo mantequilla', route: '/catalogo?tono=Amarillo mantequilla' },
-        { label: 'Rojo',                 route: '/catalogo?tono=Rojo' },
-        { label: 'Miel',                 route: '/catalogo?tono=Miel' },
-        { label: 'Café moca',            route: '/catalogo?tono=Café moca' },
-        { label: 'Verde',                route: '/catalogo?tono=Verde' },
-        { label: 'Todos',                route: '/catalogo' },
-      ],
-    },
-    {
       label: 'Nosotros',
       subOptions: [
         { label: 'Nuestra historia', route: '/nosotros' },
