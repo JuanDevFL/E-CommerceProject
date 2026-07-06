@@ -100,7 +100,7 @@ function TermsPage() {
           <h2>11. Atención al cliente y PQR</h2>
           <p>
             Para solicitudes, novedades, quejas, reclamos o requerimientos relacionados con una compra,
-            puedes escribir a contacto@azami.com. Azami podrá pedir información adicional para validar la identidad
+            puedes escribir a azami.oficial@gmail.com. Azami podrá pedir información adicional para validar la identidad
             del solicitante y revisar correctamente el caso.
           </p>
         </article>

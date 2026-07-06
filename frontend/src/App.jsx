@@ -753,7 +753,7 @@ function App() {
 
       {!isAdminPage && (
         <a
-          href="https://wa.me/573002454123?text=Hola%2C%20me%20interesa%20saber%20m%C3%A1s%20sobre%20los%20productos%20de%20Azami"
+          href="https://wa.me/message/CEF4F3BBVGJJK1"
           target="_blank"
           rel="noopener noreferrer"
           className="whatsapp-fab"

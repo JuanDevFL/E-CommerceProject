@@ -83,10 +83,10 @@ function AboutPage() {
             Creamos piezas para tu estilo. Escríbenos para pedidos personalizados, colaboraciones o atención postventa.
           </p>
           <a
-            href="mailto:contacto@azami.com"
+            href="mailto:azami.oficial@gmail.com"
             className="btn-primary rounded-full px-8 py-3.5 text-sm font-semibold inline-flex mt-4"
           >
-            contacto@azami.com
+            azami.oficial@gmail.com
           </a>
         </div>
       </section>

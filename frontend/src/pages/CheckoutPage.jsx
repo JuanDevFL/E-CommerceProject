@@ -426,7 +426,7 @@ export default function CheckoutPage({ user, cartItems, onBackToCatalog, onOrder
         codigo_postal: guestForm.codigo_postal,
         pais: guestForm.pais,
       };
-  const whatsappNumber = import.meta.env.VITE_WHATSAPP_SALES_NUMBER || '573002454123';
+  const whatsappNumber = import.meta.env.VITE_WHATSAPP_SALES_NUMBER || '573004651366';
   const whatsappCustomer = user
     ? {
         name: user.name,
