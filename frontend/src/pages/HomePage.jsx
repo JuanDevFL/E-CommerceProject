@@ -167,7 +167,7 @@ function HomePage({ catalogProducts }) {
               Lujo artesanal
             </h1>
             <p className="mt-5 text-xs uppercase tracking-[0.35em] text-primary/90 sm:text-base sm:tracking-[0.4em]">
-              Bolsos · Accesorios · Colección 2025
+              Bolsos · Colección 2026
             </p>
             <p className="mt-4 text-sm leading-6 text-muted max-w-xl mx-auto">
               Descubre diseños artesanales pensados para acompañarte con estilo y durabilidad.
