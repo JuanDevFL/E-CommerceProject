@@ -91,7 +91,7 @@ function VisualStorySection({ products }) {
       <div className="site-section-inner">
         <div className="mb-8 text-center">
           <p className="text-xs uppercase tracking-[0.34em] text-muted">Galería Azami</p>
-          <h2 className="mt-3 text-3xl font-semibold tracking-tight text-heading sm:text-4xl">Piezas destacadas</h2>
+          <h2 className="mt-3 text-3xl font-semibold tracking-tight text-heading sm:text-4xl">Selección visual de temporada</h2>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -117,6 +117,39 @@ function VisualStorySection({ products }) {
               </article>
             );
           })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ValuePropsSection() {
+  return (
+    <section className="site-section bg-surface-alt py-10 sm:py-14">
+      <div className="site-section-inner">
+        <div className="mx-auto max-w-5xl text-center">
+          <p className="text-xs uppercase tracking-[0.34em] text-muted">Comprar en Azami</p>
+          <h3 className="mt-3 text-2xl font-semibold text-heading sm:text-3xl">Beneficios y métodos de pago</h3>
+        </div>
+
+        <div className="mx-auto mt-8 grid max-w-5xl gap-4 sm:grid-cols-3">
+          <article className="rounded-2xl border border-border/60 bg-background-alt p-5 text-center">
+            <p className="text-xs uppercase tracking-[0.24em] text-muted">Envío</p>
+            <p className="mt-2 text-sm font-semibold text-heading">Nacional y seguro</p>
+            <p className="mt-2 text-sm text-muted">Despachamos a todo Colombia con empaque protegido.</p>
+          </article>
+
+          <article className="rounded-2xl border border-border/60 bg-background-alt p-5 text-center">
+            <p className="text-xs uppercase tracking-[0.24em] text-muted">Pago</p>
+            <p className="mt-2 text-sm font-semibold text-heading">Wompi + opciones locales</p>
+            <p className="mt-2 text-sm text-muted">Tarjetas, PSE y métodos habilitados por Wompi.</p>
+          </article>
+
+          <article className="rounded-2xl border border-border/60 bg-background-alt p-5 text-center">
+            <p className="text-xs uppercase tracking-[0.24em] text-muted">Soporte</p>
+            <p className="mt-2 text-sm font-semibold text-heading">Acompañamiento real</p>
+            <p className="mt-2 text-sm text-muted">Te orientamos por WhatsApp antes y después de la compra.</p>
+          </article>
         </div>
       </div>
     </section>
@@ -163,17 +196,7 @@ function HomePage({ catalogProducts }) {
         </div>
       </section>
 
-      <section className="site-section bg-surface-alt py-10 sm:py-14">
-        <div className="site-section-inner">
-          <div className="mx-auto max-w-2xl text-center">
-            <p className="text-xs uppercase tracking-[0.34em] text-muted">Colección viva</p>
-            <h3 className="mt-3 text-2xl font-semibold text-heading sm:text-3xl">Explora más piezas en el catálogo completo</h3>
-            <Link to="/catalogo" className="featured-carousel-btn mt-6 inline-flex">
-              Ver todas las fotos →
-            </Link>
-          </div>
-        </div>
-      </section>
+      <ValuePropsSection />
     </main>
   );
 }
