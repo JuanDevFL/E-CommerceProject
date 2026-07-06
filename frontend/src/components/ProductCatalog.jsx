@@ -1,29 +1,62 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { formatPrice } from '../utils/pricing.js';
 import { translateCategoryLabel, translateProductTagLabel } from '../utils/catalogLabels.js';
+
+function FilterIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <line x1="4" y1="6" x2="20" y2="6" />
+      <line x1="8" y1="12" x2="16" y2="12" />
+      <line x1="10" y1="18" x2="14" y2="18" />
+    </svg>
+  );
+}
+
+function CloseIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+      <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  );
+}
 
 function ProductCatalog({ products, notice, isLoading, wishlistIds = [], onAddToCart, onBuyNow, onToggleWishlist, initialCategory = 'Todos', initialTone = 'Todos' }) {
   const [activeCategory, setActiveCategory] = useState(initialCategory);
   const [activeTone, setActiveTone] = useState(initialTone);
   const [onlyAvailable, setOnlyAvailable] = useState(true);
+  const [filterOpen, setFilterOpen] = useState(false);
 
-  // Sincronizar si el usuario navega a /catalogo?tipo=X o ?tono=X desde el menú
   useEffect(() => {
     setActiveCategory(initialCategory);
     setActiveTone(initialTone);
   }, [initialCategory, initialTone]);
 
-  const categories = ['Todos', ...new Set(products.map((product) => product.categoria))];
-  const tones = ['Todos', ...new Set(products.map((product) => product.tono))];
+  // Cerrar con Escape
+  useEffect(() => {
+    if (!filterOpen) return;
+    const onKey = (e) => { if (e.key === 'Escape') setFilterOpen(false); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [filterOpen]);
+
+  const categories = ['Todos', ...new Set(products.map((p) => p.categoria))];
+  const tones = ['Todos', ...new Set(products.map((p) => p.tono))];
 
   const filteredProducts = products.filter((product) => {
     const matchesCategory = activeCategory === 'Todos' || product.categoria === activeCategory;
     const matchesTone = activeTone === 'Todos' || product.tono === activeTone;
     const matchesAvailability = !onlyAvailable || product.stock > 0;
-
     return matchesCategory && matchesTone && matchesAvailability;
   });
+
+  const activeFilterCount = (activeCategory !== 'Todos' ? 1 : 0) + (activeTone !== 'Todos' ? 1 : 0);
+
+  const resetFilters = useCallback(() => {
+    setActiveCategory('Todos');
+    setActiveTone('Todos');
+    setOnlyAvailable(true);
+  }, []);
 
   return (
     <section className="catalog-shell">
@@ -44,48 +77,114 @@ function ProductCatalog({ products, notice, isLoading, wishlistIds = [], onAddTo
         </div>
       </div>
 
-      <div className="catalog-toolbar">
-        <div className="catalog-filter-block">
-          <span className="catalog-filter-label">Categoría</span>
-          <div className="catalog-chip-row">
-            {categories.map((category) => (
-              <button
-                key={category}
-                type="button"
-                className={`catalog-chip ${category === activeCategory ? 'is-active' : ''}`}
-                onClick={() => setActiveCategory(category)}
-              >
-                {translateCategoryLabel(category)}
-              </button>
-            ))}
-          </div>
-        </div>
+      {/* ── Barra de filtros ── */}
+      <div className="catalog-filter-trigger-row">
+        <button
+          type="button"
+          className="catalog-filter-btn"
+          onClick={() => setFilterOpen(true)}
+          aria-expanded={filterOpen}
+          aria-haspopup="dialog"
+        >
+          <FilterIcon />
+          Filtros
+          {activeFilterCount > 0 && (
+            <span className="catalog-filter-count">{activeFilterCount}</span>
+          )}
+        </button>
 
-        <div className="catalog-filter-block">
-          <span className="catalog-filter-label">Tono</span>
-          <div className="catalog-chip-row">
-            {tones.map((tone) => (
-              <button
-                key={tone}
-                type="button"
-                className={`catalog-chip ${tone === activeTone ? 'is-active' : ''}`}
-                onClick={() => setActiveTone(tone)}
-              >
-                {tone}
-              </button>
-            ))}
-          </div>
-        </div>
+        {activeCategory !== 'Todos' && (
+          <span className="catalog-filter-active-chip">
+            {translateCategoryLabel(activeCategory)}
+            <button type="button" onClick={() => setActiveCategory('Todos')} aria-label="Quitar filtro de categoría">✕</button>
+          </span>
+        )}
+        {activeTone !== 'Todos' && (
+          <span className="catalog-filter-active-chip">
+            {activeTone}
+            <button type="button" onClick={() => setActiveTone('Todos')} aria-label="Quitar filtro de tono">✕</button>
+          </span>
+        )}
+        {activeFilterCount > 0 && (
+          <button type="button" className="catalog-filter-clear" onClick={resetFilters}>
+            Limpiar filtros
+          </button>
+        )}
 
-        <label className="catalog-toggle">
-          <input
-            type="checkbox"
-            checked={onlyAvailable}
-            onChange={(event) => setOnlyAvailable(event.target.checked)}
-          />
-          Mostrar solo disponibles
-        </label>
+        <span className="catalog-filter-result-count">{filteredProducts.length} resultado{filteredProducts.length !== 1 ? 's' : ''}</span>
       </div>
+
+      {/* ── Popup de filtros ── */}
+      {filterOpen && (
+        <div className="catalog-filter-overlay" role="dialog" aria-modal="true" aria-label="Panel de filtros">
+          <div className="catalog-filter-backdrop" onClick={() => setFilterOpen(false)} />
+
+          <div className="catalog-filter-popup">
+            <div className="catalog-filter-popup-header">
+              <span className="catalog-filter-popup-title">Filtros</span>
+              <div className="catalog-filter-popup-actions">
+                {activeFilterCount > 0 && (
+                  <button type="button" className="catalog-filter-clear" onClick={resetFilters}>
+                    Limpiar todo
+                  </button>
+                )}
+                <button type="button" className="catalog-filter-close-btn" onClick={() => setFilterOpen(false)} aria-label="Cerrar filtros">
+                  <CloseIcon />
+                </button>
+              </div>
+            </div>
+
+            <div className="catalog-filter-popup-body">
+              <div className="catalog-filter-block">
+                <span className="catalog-filter-label">Categoría</span>
+                <div className="catalog-chip-row">
+                  {categories.map((category) => (
+                    <button
+                      key={category}
+                      type="button"
+                      className={`catalog-chip ${category === activeCategory ? 'is-active' : ''}`}
+                      onClick={() => setActiveCategory(category)}
+                    >
+                      {translateCategoryLabel(category)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="catalog-filter-block">
+                <span className="catalog-filter-label">Tono</span>
+                <div className="catalog-chip-row">
+                  {tones.map((tone) => (
+                    <button
+                      key={tone}
+                      type="button"
+                      className={`catalog-chip ${tone === activeTone ? 'is-active' : ''}`}
+                      onClick={() => setActiveTone(tone)}
+                    >
+                      {tone}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <label className="catalog-toggle">
+                <input
+                  type="checkbox"
+                  checked={onlyAvailable}
+                  onChange={(e) => setOnlyAvailable(e.target.checked)}
+                />
+                Mostrar solo disponibles
+              </label>
+            </div>
+
+            <div className="catalog-filter-popup-footer">
+              <button type="button" className="btn-primary rounded-full px-6 py-3 text-sm font-semibold w-full" onClick={() => setFilterOpen(false)}>
+                Ver {filteredProducts.length} resultado{filteredProducts.length !== 1 ? 's' : ''}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {(notice || isLoading) && (
         <p className="catalog-notice">
