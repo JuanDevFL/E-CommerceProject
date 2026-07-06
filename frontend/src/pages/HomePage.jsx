@@ -83,6 +83,53 @@ function FeaturedCarousel({ products }) {
   );
 }
 
+function VisualStorySection({ products }) {
+  const visualItems = (products && products.length > 0 ? products : curatedProducts).slice(0, 6);
+
+  return (
+    <section className="site-section bg-surface py-10 sm:py-14">
+      <div className="site-section-inner">
+        <div className="mb-8 text-center">
+          <p className="text-xs uppercase tracking-[0.34em] text-muted">Galería Azami</p>
+          <h2 className="mt-3 text-3xl font-semibold tracking-tight text-heading sm:text-4xl">Más visual, menos texto</h2>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-12">
+          {visualItems.map((item, index) => {
+            const isPrimary = index === 0;
+            const isWide = index === 3 || index === 4;
+            const cardClass = isPrimary
+              ? 'lg:col-span-7 lg:row-span-2'
+              : isWide
+                ? 'lg:col-span-4'
+                : 'lg:col-span-5';
+
+            return (
+              <article
+                key={`${item.id || item.nombre}-${index}`}
+                className={`group relative overflow-hidden rounded-2xl border border-border/60 bg-background-alt ${cardClass}`}
+              >
+                <img
+                  src={item.imagen_url}
+                  alt={item.nombre}
+                  className={`w-full object-cover transition duration-500 group-hover:scale-105 ${isPrimary ? 'h-[20rem] sm:h-[28rem]' : 'h-56 sm:h-64'}`}
+                  loading="lazy"
+                  decoding="async"
+                  referrerPolicy="no-referrer"
+                />
+
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/65 to-transparent p-4 text-white">
+                  <p className="text-sm font-semibold tracking-wide">{item.nombre}</p>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function HomePage({ catalogProducts }) {
   return (
     <main className="w-full">
@@ -111,16 +158,7 @@ function HomePage({ catalogProducts }) {
         </div>
       </section>
 
-      <section className="site-section bg-surface py-10 sm:py-14">
-        <div className="site-section-inner">
-          <div className="mx-auto max-w-3xl text-base leading-7 text-muted space-y-5">
-            <p>Azami Studio nace de la convicción de que los accesorios de lujo deben ser honestos: honestos en sus materiales, en su manufactura y en su propósito. Cada pieza pasa por un proceso artesanal riguroso antes de llegar a tus manos.</p>
-            <p>Trabajamos con cueros seleccionados, herrajes de primera calidad y líneas de diseño que evitan la tendencia pasajera. El resultado son bolsos que no solo acompañan un atuendo, sino que definen un estilo propio y duradero.</p>
-            <p>Nuestra colección se renueva por temporadas cortas y controladas. Producimos en lotes pequeños para garantizar atención al detalle en cada unidad, lo que también convierte cada pieza en algo genuinamente exclusivo.</p>
-            <p>Si buscas un accesorio con historia, con carácter y con la solidez de lo bien hecho, estás en el lugar correcto. Explora nuestra selección y encuentra la pieza que lleva tu nombre.</p>
-          </div>
-        </div>
-      </section>
+      <VisualStorySection products={catalogProducts} />
 
       <section className="site-section featured-section py-10 sm:py-14">
         <div className="site-section-inner">
@@ -134,10 +172,12 @@ function HomePage({ catalogProducts }) {
 
       <section className="site-section bg-surface-alt py-10 sm:py-14">
         <div className="site-section-inner">
-          <div className="mx-auto max-w-3xl text-base leading-7 text-muted space-y-5">
-            <p>Cada temporada Azami presenta una selección cápsula construida alrededor de un concepto de color y forma. No seguimos tendencias masivas: creamos referencias propias que evolucionan con quienes las llevan.</p>
-            <p>Nuestro proceso de curaduría incluye pruebas de resistencia, validación de herrajes y revisión de costuras antes de aprobar cualquier diseño para producción. La calidad no es un argumento de venta, es una condición de entrada.</p>
-            <p>Ofrecemos envío a todo el territorio nacional con empaque especial para cada pedido. Si tienes preguntas sobre alguna pieza, nuestro equipo está disponible por WhatsApp para orientarte antes de tu compra.</p>
+          <div className="mx-auto max-w-2xl text-center">
+            <p className="text-xs uppercase tracking-[0.34em] text-muted">Colección viva</p>
+            <h3 className="mt-3 text-2xl font-semibold text-heading sm:text-3xl">Explora más piezas en el catálogo completo</h3>
+            <Link to="/catalogo" className="featured-carousel-btn mt-6 inline-flex">
+              Ver todas las fotos →
+            </Link>
           </div>
         </div>
       </section>
