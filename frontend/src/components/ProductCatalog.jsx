@@ -24,7 +24,6 @@ function CloseIcon() {
 function ProductCatalog({ products, notice, isLoading, wishlistIds = [], onAddToCart, onBuyNow, onToggleWishlist, initialCategory = 'Todos', initialTone = 'Todos' }) {
   const [activeCategory, setActiveCategory] = useState(initialCategory);
   const [activeTone, setActiveTone] = useState(initialTone);
-  const [onlyAvailable, setOnlyAvailable] = useState(true);
   const [filterOpen, setFilterOpen] = useState(false);
 
   useEffect(() => {
@@ -46,8 +45,7 @@ function ProductCatalog({ products, notice, isLoading, wishlistIds = [], onAddTo
   const filteredProducts = products.filter((product) => {
     const matchesCategory = activeCategory === 'Todos' || product.categoria === activeCategory;
     const matchesTone = activeTone === 'Todos' || product.tono === activeTone;
-    const matchesAvailability = !onlyAvailable || product.stock > 0;
-    return matchesCategory && matchesTone && matchesAvailability;
+    return matchesCategory && matchesTone;
   });
 
   const activeFilterCount = (activeCategory !== 'Todos' ? 1 : 0) + (activeTone !== 'Todos' ? 1 : 0);
@@ -55,7 +53,6 @@ function ProductCatalog({ products, notice, isLoading, wishlistIds = [], onAddTo
   const resetFilters = useCallback(() => {
     setActiveCategory('Todos');
     setActiveTone('Todos');
-    setOnlyAvailable(true);
   }, []);
 
   return (
@@ -166,15 +163,6 @@ function ProductCatalog({ products, notice, isLoading, wishlistIds = [], onAddTo
                   ))}
                 </div>
               </div>
-
-              <label className="catalog-toggle">
-                <input
-                  type="checkbox"
-                  checked={onlyAvailable}
-                  onChange={(e) => setOnlyAvailable(e.target.checked)}
-                />
-                Mostrar solo disponibles
-              </label>
             </div>
 
             <div className="catalog-filter-popup-footer">
@@ -202,7 +190,6 @@ function ProductCatalog({ products, notice, isLoading, wishlistIds = [], onAddTo
             onClick={() => {
               setActiveCategory('Todos');
               setActiveTone('Todos');
-              setOnlyAvailable(false);
             }}
           >
             Reiniciar filtros
