@@ -3,15 +3,16 @@ import { Link } from 'react-router-dom';
 import { formatPrice } from '../utils/pricing.js';
 import { translateCategoryLabel, translateProductTagLabel } from '../utils/catalogLabels.js';
 
-function ProductCatalog({ products, notice, isLoading, wishlistIds = [], onAddToCart, onBuyNow, onToggleWishlist, initialCategory = 'Todos' }) {
+function ProductCatalog({ products, notice, isLoading, wishlistIds = [], onAddToCart, onBuyNow, onToggleWishlist, initialCategory = 'Todos', initialTone = 'Todos' }) {
   const [activeCategory, setActiveCategory] = useState(initialCategory);
-  const [activeTone, setActiveTone] = useState('Todos');
+  const [activeTone, setActiveTone] = useState(initialTone);
   const [onlyAvailable, setOnlyAvailable] = useState(true);
 
-  // Sincronizar si el usuario navega a /catalogo?tipo=X desde el menú
+  // Sincronizar si el usuario navega a /catalogo?tipo=X o ?tono=X desde el menú
   useEffect(() => {
     setActiveCategory(initialCategory);
-  }, [initialCategory]);
+    setActiveTone(initialTone);
+  }, [initialCategory, initialTone]);
 
   const categories = ['Todos', ...new Set(products.map((product) => product.categoria))];
   const tones = ['Todos', ...new Set(products.map((product) => product.tono))];

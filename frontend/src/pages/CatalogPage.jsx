@@ -5,6 +5,7 @@ import ProductCatalog from '../components/ProductCatalog.jsx';
 function CatalogPage({ catalogProducts, catalogNotice, catalogLoading, wishlistIds, onAddToCart, onBuyNow, onToggleWishlist }) {
   const [searchParams] = useSearchParams();
   const tipoParam = searchParams.get('tipo') || 'Todos';
+  const tonoParam = searchParams.get('tono') || 'Todos';
 
   return (
     <main className="catalog-page">
@@ -25,6 +26,7 @@ function CatalogPage({ catalogProducts, catalogNotice, catalogLoading, wishlistI
         onBuyNow={onBuyNow}
         onToggleWishlist={onToggleWishlist}
         initialCategory={tipoParam}
+        initialTone={tonoParam}
       />
     </main>
   );
