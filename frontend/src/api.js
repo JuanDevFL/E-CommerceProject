@@ -166,6 +166,46 @@ export async function fetchActiveAnnouncements() {
   });
 }
 
+// ── CMS public ────────────────────────────────────────────────────────────────
+export async function fetchCmsFilters() {
+  return request('/cms/filters', { method: 'GET' });
+}
+export async function fetchCmsContent() {
+  return request('/cms/content', { method: 'GET' });
+}
+export async function fetchCmsCarousel() {
+  return request('/cms/carousel', { method: 'GET' });
+}
+
+// ── CMS admin ─────────────────────────────────────────────────────────────────
+export async function fetchAdminCmsFilters() {
+  return request('/admin/cms/filters', { method: 'GET', auth: true });
+}
+export async function addAdminCmsFilter(payload) {
+  return request('/admin/cms/filters', { method: 'POST', auth: true, body: JSON.stringify(payload) });
+}
+export async function deleteAdminCmsFilter(id) {
+  return request(`/admin/cms/filters/${id}`, { method: 'DELETE', auth: true });
+}
+export async function fetchAdminCmsContent() {
+  return request('/admin/cms/content', { method: 'GET', auth: true });
+}
+export async function saveAdminCmsContent(items) {
+  return request('/admin/cms/content', { method: 'POST', auth: true, body: JSON.stringify(items) });
+}
+export async function fetchAdminCmsCarousel() {
+  return request('/admin/cms/carousel', { method: 'GET', auth: true });
+}
+export async function addAdminCmsSlide(payload) {
+  return request('/admin/cms/carousel', { method: 'POST', auth: true, body: JSON.stringify(payload) });
+}
+export async function updateAdminCmsSlide(id, payload) {
+  return request(`/admin/cms/carousel/${id}`, { method: 'PUT', auth: true, body: JSON.stringify(payload) });
+}
+export async function deleteAdminCmsSlide(id) {
+  return request(`/admin/cms/carousel/${id}`, { method: 'DELETE', auth: true });
+}
+
 export async function createAdminProducto(payload) {
   return request('/productos', {
     method: 'POST',

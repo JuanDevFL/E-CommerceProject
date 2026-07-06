@@ -1,5 +1,6 @@
 import express from 'express';
 import { createAnnouncement, getAdminDashboard, getOrderDetail, updateAnnouncement, updateOrderStatus, uploadImage, updateUsuarioRol } from '../controllers/adminController.js';
+import { getAdminFilters, addFilter, deleteFilter, getAdminContent, upsertContent, getAdminCarousel, addSlide, updateSlide, deleteSlide } from '../controllers/cmsController.js';
 import multer from 'multer';
 import { downloadOfflineSalesTemplate, importOfflineSalesWorkbook } from '../controllers/offlineSalesController.js';
 import { requireAdmin, requireAuth } from '../middleware/authMiddleware.js';
@@ -62,5 +63,16 @@ router.patch('/orders/:orderId/status', updateOrderStatus);
 router.patch('/users/:userId/role', updateUsuarioRol);
 router.post('/announcements', createAnnouncement);
 router.put('/announcements/:announcementId', updateAnnouncement);
+
+// ── CMS ──────────────────────────────────────────────────────────────────────
+router.get('/cms/filters',          getAdminFilters);
+router.post('/cms/filters',         addFilter);
+router.delete('/cms/filters/:id',   deleteFilter);
+router.get('/cms/content',          getAdminContent);
+router.post('/cms/content',         upsertContent);
+router.get('/cms/carousel',         getAdminCarousel);
+router.post('/cms/carousel',        addSlide);
+router.put('/cms/carousel/:id',     updateSlide);
+router.delete('/cms/carousel/:id',  deleteSlide);
 
 export default router;

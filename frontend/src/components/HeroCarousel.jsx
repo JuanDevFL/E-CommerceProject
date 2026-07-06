@@ -1,40 +1,47 @@
 import { useEffect, useState } from 'react';
+import { fetchCmsCarousel } from '../api.js';
 
-const slides = [
+const FALLBACK_SLIDES = [
   {
     src: 'https://images.pexels.com/photos/35666033/pexels-photo-35666033.jpeg?auto=compress&cs=tinysrgb&w=1600',
-    alt: 'Bolsos de cuero en tonos tierra sobre fondo blanco.',
     eyebrow: 'Editorial Azami',
     title: 'Piezas con estructura y presencia.',
     description: 'Diseños que equilibran forma, durabilidad y elegancia natural para acompañarte cada día.'
   },
   {
     src: 'https://images.pexels.com/photos/23223842/pexels-photo-23223842.jpeg?auto=compress&cs=tinysrgb&w=1600',
-    alt: 'Bolso rosa de cuero en una composición floral.',
     eyebrow: 'Selección cápsula',
     title: 'Color, textura y detalle artesanal.',
     description: 'Materiales premium seleccionados a mano en tonos que se adaptan a tu estilo y personalidad.'
   },
   {
     src: 'https://images.pexels.com/photos/7953286/pexels-photo-7953286.jpeg?auto=compress&cs=tinysrgb&w=1600',
-    alt: 'Bolso negro y rojo sobre una composición geométrica.',
     eyebrow: 'Estilo de estudio',
     title: 'Contraste limpio para la colección.',
     description: 'Una selección de contrastes audaces que dan carácter a cada conjunto, de día o de noche.'
   },
-  {
-    src: 'https://images.pexels.com/photos/5706269/pexels-photo-5706269.jpeg?auto=compress&cs=tinysrgb&w=1600',
-    alt: 'Bolsos pequeños de cuero en un set minimalista.',
-    eyebrow: 'Avance de temporada',
-    title: 'Siluetas compactas y acabados suaves.',
-    description: 'Formatos pensados para el movimiento moderno: ligeros, versátiles y con acabado de lujo artesanal.'
-  }
 ];
 
 const AUTOPLAY_MS = 4800;
 
 function HeroCarousel() {
   const [activeIndex, setActiveIndex] = useState(0);
+  const [slides, setSlides] = useState(FALLBACK_SLIDES);
+
+  useEffect(() => {
+    fetchCmsCarousel()
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setSlides(data.map((s) => ({
+            src: s.imagen_url,
+            eyebrow: s.eyebrow || '',
+            title: s.titulo || '',
+            description: s.descripcion || '',
+          })));
+        }
+      })
+      .catch(() => { /* mantiene fallback */ });
+  }, []);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -42,7 +49,7 @@ function HeroCarousel() {
     }, AUTOPLAY_MS);
 
     return () => window.clearInterval(timer);
-  }, []);
+  }, [slides.length]);
 
   const goToSlide = (index) => setActiveIndex(index);
 

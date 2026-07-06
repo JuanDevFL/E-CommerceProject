@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { formatPrice } from '../utils/pricing.js';
 import { translateCategoryLabel, translateProductTagLabel } from '../utils/catalogLabels.js';
+import { fetchCmsFilters } from '../api.js';
 
 function FilterIcon() {
   return (
@@ -25,6 +26,17 @@ function ProductCatalog({ products, notice, isLoading, wishlistIds = [], onAddTo
   const [activeCategory, setActiveCategory] = useState(initialCategory);
   const [activeTone, setActiveTone] = useState(initialTone);
   const [filterOpen, setFilterOpen] = useState(false);
+  const [cmsCategories, setCmsCategories] = useState([]);
+  const [cmsTones, setCmsTones] = useState([]);
+
+  useEffect(() => {
+    fetchCmsFilters()
+      .then((data) => {
+        if (data.categorias?.length) setCmsCategories(data.categorias);
+        if (data.tonos?.length) setCmsTones(data.tonos);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     setActiveCategory(initialCategory);
@@ -39,8 +51,8 @@ function ProductCatalog({ products, notice, isLoading, wishlistIds = [], onAddTo
     return () => document.removeEventListener('keydown', onKey);
   }, [filterOpen]);
 
-  const categories = ['Todos', ...new Set(products.map((p) => p.categoria))];
-  const tones = ['Todos', ...new Set(products.map((p) => p.tono))];
+  const categories = ['Todos', ...(cmsCategories.length ? cmsCategories : [...new Set(products.map((p) => p.categoria))])];
+  const tones      = ['Todos', ...(cmsTones.length      ? cmsTones      : [...new Set(products.map((p) => p.tono))])];
 
   const filteredProducts = products.filter((product) => {
     const matchesCategory = activeCategory === 'Todos' || product.categoria === activeCategory;

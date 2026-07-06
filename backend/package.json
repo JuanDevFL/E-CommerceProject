@@ -11,6 +11,7 @@
     "seed:users": "node src/scripts/seedUsers.js",
     "seed:tipos": "node src/scripts/seedProductTypes.js",
     "seed:tonos": "node src/scripts/seedTonos.js",
+    "setup:cms": "node src/scripts/setupCmsTables.js",
     "template:offline-sales": "node src/scripts/generateOfflineSalesTemplate.js"
   },
   "dependencies": {

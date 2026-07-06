@@ -11,6 +11,15 @@ import {
   updateOrderStatus,
   uploadProductImage,
   updateUsuarioRol,
+  fetchAdminCmsFilters,
+  addAdminCmsFilter,
+  deleteAdminCmsFilter,
+  fetchAdminCmsContent,
+  saveAdminCmsContent,
+  fetchAdminCmsCarousel,
+  addAdminCmsSlide,
+  updateAdminCmsSlide,
+  deleteAdminCmsSlide,
 } from '../api.js';
 import { formatPrice as formatCurrency, normalizePrice } from '../utils/pricing.js';
 import './AdminDashboardPage.css';
@@ -85,11 +94,12 @@ function buildAnnouncementDrafts(announcements) {
 }
 
 const ADMIN_TABS = [
-  { id: 'analitica', label: 'Analítica' },
-  { id: 'ventas', label: 'Ventas' },
-  { id: 'productos', label: 'Productos' },
-  { id: 'envios', label: 'Envíos' },
-  { id: 'anuncios', label: 'Anuncios' },
+  { id: 'analitica',  label: 'Analítica' },
+  { id: 'ventas',     label: 'Ventas' },
+  { id: 'productos',  label: 'Productos' },
+  { id: 'envios',     label: 'Envíos' },
+  { id: 'anuncios',   label: 'Anuncios' },
+  { id: 'contenido',  label: 'Contenido' },
 ];
 
 const SHIPMENT_STATES = [
@@ -169,6 +179,17 @@ function AdminDashboardPage({ user, onProductCreated }) {
 
   const [activeTab, setActiveTab] = useState('analitica');
   const [updatingShipmentId, setUpdatingShipmentId] = useState(null);
+
+  // ── CMS state ─────────────────────────────────────────────────────────────
+  const [cmsFilters, setCmsFilters]         = useState(null);
+  const [cmsContent, setCmsContent]         = useState(null);
+  const [cmsCarousel, setCmsCarousel]       = useState(null);
+  const [cmsLoading, setCmsLoading]         = useState(false);
+  const [cmsNewFilter, setCmsNewFilter]     = useState({ tipo: 'categoria', valor: '' });
+  const [cmsNewSlide, setCmsNewSlide]       = useState({ eyebrow: '', titulo: '', descripcion: '', imagen_url: '', orden: 0 });
+  const [cmsEditSlide, setCmsEditSlide]     = useState(null);
+  const [cmsContentEdits, setCmsContentEdits] = useState({});
+  const [cmsSaving, setCmsSaving]           = useState(false);
   const [shipmentSearch, setShipmentSearch] = useState('');
   const [shipmentStatusFilter, setShipmentStatusFilter] = useState('all');
   const [shipmentPage, setShipmentPage] = useState(0);
@@ -206,6 +227,27 @@ function AdminDashboardPage({ user, onProductCreated }) {
   useEffect(() => {
     loadDashboard({ showLoader: true });
   }, []);
+
+  // Carga CMS cuando el usuario abre el tab Contenido
+  useEffect(() => {
+    if (activeTab !== 'contenido' || cmsFilters !== null) return;
+    setCmsLoading(true);
+    Promise.all([fetchAdminCmsFilters(), fetchAdminCmsContent(), fetchAdminCmsCarousel()])
+      .then(([filters, content, carousel]) => {
+        setCmsFilters(filters);
+        setCmsContent(content);
+        const edits = {};
+        for (const [sec, claves] of Object.entries(content)) {
+          for (const [clave, obj] of Object.entries(claves)) {
+            edits[`${sec}.${clave}`] = obj.valor;
+          }
+        }
+        setCmsContentEdits(edits);
+        setCmsCarousel(carousel);
+      })
+      .catch(() => setActionError('No se pudo cargar el contenido CMS.'))
+      .finally(() => setCmsLoading(false));
+  }, [activeTab, cmsFilters]);
 
   useEffect(() => {
     if (!successMessage && !actionError) {
@@ -665,6 +707,72 @@ function AdminDashboardPage({ user, onProductCreated }) {
   }).length;
   const inTransitShipments = shipments.filter((order) => order.estado === 'enviado').length;
   const deliveredShipments = shipments.filter((order) => order.estado === 'entregado').length;
+
+  // ── CMS handlers ────────────────────────────────────────────────────────────
+  const handleAddFilter = async () => {
+    if (!cmsNewFilter.valor.trim()) return;
+    try {
+      const added = await addAdminCmsFilter(cmsNewFilter);
+      setCmsFilters((prev) => {
+        const key = cmsNewFilter.tipo === 'categoria' ? 'categorias' : 'tonos';
+        return { ...prev, [key]: [...(prev[key] || []), added] };
+      });
+      setCmsNewFilter((f) => ({ ...f, valor: '' }));
+    } catch (err) { setActionError(err.message); }
+  };
+
+  const handleDeleteFilter = async (id, tipo) => {
+    try {
+      await deleteAdminCmsFilter(id);
+      setCmsFilters((prev) => {
+        const key = tipo === 'categoria' ? 'categorias' : 'tonos';
+        return { ...prev, [key]: prev[key].filter((f) => f.id !== id) };
+      });
+    } catch (err) { setActionError(err.message); }
+  };
+
+  const handleSaveContent = async () => {
+    setCmsSaving(true);
+    try {
+      const items = Object.entries(cmsContentEdits).map(([key, valor]) => {
+        const [seccion, ...rest] = key.split('.');
+        return { seccion, clave: rest.join('.'), valor };
+      });
+      await saveAdminCmsContent(items);
+      setSuccessMessage('Textos guardados correctamente.');
+      setCmsFilters(null); // force reload
+    } catch (err) { setActionError(err.message); }
+    finally { setCmsSaving(false); }
+  };
+
+  const handleAddSlide = async () => {
+    if (!cmsNewSlide.titulo || !cmsNewSlide.imagen_url) {
+      setActionError('El título y la URL de imagen son obligatorios.');
+      return;
+    }
+    try {
+      const added = await addAdminCmsSlide(cmsNewSlide);
+      setCmsCarousel((prev) => [...(prev || []), added]);
+      setCmsNewSlide({ eyebrow: '', titulo: '', descripcion: '', imagen_url: '', orden: (cmsCarousel?.length || 0) });
+    } catch (err) { setActionError(err.message); }
+  };
+
+  const handleSaveSlide = async () => {
+    if (!cmsEditSlide) return;
+    try {
+      await updateAdminCmsSlide(cmsEditSlide.id, cmsEditSlide);
+      setCmsCarousel((prev) => prev.map((s) => (s.id === cmsEditSlide.id ? { ...s, ...cmsEditSlide } : s)));
+      setCmsEditSlide(null);
+      setSuccessMessage('Slide guardado.');
+    } catch (err) { setActionError(err.message); }
+  };
+
+  const handleDeleteSlide = async (id) => {
+    try {
+      await deleteAdminCmsSlide(id);
+      setCmsCarousel((prev) => prev.filter((s) => s.id !== id));
+    } catch (err) { setActionError(err.message); }
+  };
 
   return (
     <main className="admin-page">
@@ -1870,6 +1978,151 @@ function AdminDashboardPage({ user, onProductCreated }) {
             </div>
           </div>
         )}
+
+            {/* ── CONTENIDO ─────────────────────────────────────────────────── */}
+            {activeTab === 'contenido' && (
+              <div className="admin-section">
+                <h2 className="admin-section-title">Gestión de contenido</h2>
+
+                {cmsLoading && <p className="admin-notice">Cargando contenido...</p>}
+
+                {!cmsLoading && cmsFilters && (
+                  <>
+                    {/* ── Filtros del catálogo ── */}
+                    <div className="admin-cms-block">
+                      <h3 className="admin-cms-subtitle">Filtros del catálogo</h3>
+
+                      <div className="admin-cms-filters-grid">
+                        {/* Categorías */}
+                        <div>
+                          <p className="admin-cms-label">Tipos de bolso (categorías)</p>
+                          <div className="admin-cms-chips">
+                            {(cmsFilters.categorias || []).map((f) => (
+                              <span key={f.id} className="admin-cms-chip">
+                                {f.valor}
+                                <button type="button" onClick={() => handleDeleteFilter(f.id, 'categoria')} aria-label="Eliminar">✕</button>
+                              </span>
+                            ))}
+                          </div>
+                          <div className="admin-cms-add-row">
+                            <input
+                              type="text"
+                              className="admin-input"
+                              placeholder="Nuevo tipo, ej: Clutch"
+                              value={cmsNewFilter.tipo === 'categoria' ? cmsNewFilter.valor : ''}
+                              onChange={(e) => setCmsNewFilter({ tipo: 'categoria', valor: e.target.value })}
+                              onKeyDown={(e) => e.key === 'Enter' && handleAddFilter()}
+                            />
+                            <button type="button" className="btn-primary text-sm px-4 py-2 rounded-full" onClick={() => { setCmsNewFilter({ tipo: 'categoria', valor: cmsNewFilter.tipo === 'categoria' ? cmsNewFilter.valor : '' }); handleAddFilter(); }}>
+                              + Añadir
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Tonos */}
+                        <div>
+                          <p className="admin-cms-label">Colores / tonos</p>
+                          <div className="admin-cms-chips">
+                            {(cmsFilters.tonos || []).map((f) => (
+                              <span key={f.id} className="admin-cms-chip">
+                                {f.valor}
+                                <button type="button" onClick={() => handleDeleteFilter(f.id, 'tono')} aria-label="Eliminar">✕</button>
+                              </span>
+                            ))}
+                          </div>
+                          <div className="admin-cms-add-row">
+                            <input
+                              type="text"
+                              className="admin-input"
+                              placeholder="Nuevo tono, ej: Lila"
+                              value={cmsNewFilter.tipo === 'tono' ? cmsNewFilter.valor : ''}
+                              onChange={(e) => setCmsNewFilter({ tipo: 'tono', valor: e.target.value })}
+                              onKeyDown={(e) => e.key === 'Enter' && handleAddFilter()}
+                            />
+                            <button type="button" className="btn-primary text-sm px-4 py-2 rounded-full" onClick={() => { setCmsNewFilter({ tipo: 'tono', valor: cmsNewFilter.tipo === 'tono' ? cmsNewFilter.valor : '' }); handleAddFilter(); }}>
+                              + Añadir
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* ── Textos del sitio ── */}
+                    <div className="admin-cms-block">
+                      <h3 className="admin-cms-subtitle">Textos informativos</h3>
+                      <div className="admin-cms-content-grid">
+                        {Object.entries(cmsContentEdits).map(([key, val]) => (
+                          <label key={key} className="admin-field">
+                            <span className="admin-cms-content-key">{key.replace('.', ' → ')}</span>
+                            <textarea
+                              className="admin-input"
+                              rows={val.length > 80 ? 3 : 1}
+                              value={val}
+                              onChange={(e) => setCmsContentEdits((prev) => ({ ...prev, [key]: e.target.value }))}
+                            />
+                          </label>
+                        ))}
+                      </div>
+                      <button
+                        type="button"
+                        className="btn-primary text-sm px-5 py-2.5 rounded-full mt-4"
+                        onClick={handleSaveContent}
+                        disabled={cmsSaving}
+                      >
+                        {cmsSaving ? 'Guardando...' : 'Guardar textos'}
+                      </button>
+                    </div>
+
+                    {/* ── Carrusel principal ── */}
+                    <div className="admin-cms-block">
+                      <h3 className="admin-cms-subtitle">Carrusel principal (hero)</h3>
+
+                      {(cmsCarousel || []).map((slide) => (
+                        <div key={slide.id} className="admin-cms-slide-row">
+                          <img src={slide.imagen_url} alt={slide.titulo} className="admin-cms-slide-thumb" loading="lazy" referrerPolicy="no-referrer" />
+                          <div className="admin-cms-slide-info">
+                            {cmsEditSlide?.id === slide.id ? (
+                              <div className="admin-cms-slide-edit">
+                                <input className="admin-input" placeholder="Eyebrow" value={cmsEditSlide.eyebrow} onChange={(e) => setCmsEditSlide((s) => ({ ...s, eyebrow: e.target.value }))} />
+                                <input className="admin-input" placeholder="Título" value={cmsEditSlide.titulo} onChange={(e) => setCmsEditSlide((s) => ({ ...s, titulo: e.target.value }))} />
+                                <textarea className="admin-input" rows={2} placeholder="Descripción" value={cmsEditSlide.descripcion} onChange={(e) => setCmsEditSlide((s) => ({ ...s, descripcion: e.target.value }))} />
+                                <input className="admin-input" placeholder="URL imagen" value={cmsEditSlide.imagen_url} onChange={(e) => setCmsEditSlide((s) => ({ ...s, imagen_url: e.target.value }))} />
+                                <input className="admin-input" type="number" placeholder="Orden" value={cmsEditSlide.orden} onChange={(e) => setCmsEditSlide((s) => ({ ...s, orden: Number(e.target.value) }))} />
+                                <div className="admin-cms-slide-btns">
+                                  <button type="button" className="btn-primary text-sm px-4 py-1.5 rounded-full" onClick={handleSaveSlide}>Guardar</button>
+                                  <button type="button" className="btn-secondary text-sm px-4 py-1.5 rounded-full" onClick={() => setCmsEditSlide(null)}>Cancelar</button>
+                                </div>
+                              </div>
+                            ) : (
+                              <>
+                                <strong className="text-heading text-sm">{slide.titulo}</strong>
+                                <p className="text-muted" style={{ fontSize: '0.8rem' }}>{slide.eyebrow}</p>
+                                <p className="text-muted" style={{ fontSize: '0.8rem', marginTop: '0.2rem' }}>{slide.imagen_url}</p>
+                                <div className="admin-cms-slide-btns">
+                                  <button type="button" className="btn-secondary text-sm px-4 py-1.5 rounded-full" onClick={() => setCmsEditSlide({ ...slide })}>Editar</button>
+                                  <button type="button" className="btn-danger text-sm px-4 py-1.5 rounded-full" onClick={() => handleDeleteSlide(slide.id)}>Eliminar</button>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+
+                      <div className="admin-cms-block" style={{ marginTop: '1.5rem' }}>
+                        <p className="admin-cms-label">Añadir nuevo slide</p>
+                        <div className="admin-cms-slide-edit">
+                          <input className="admin-input" placeholder="Eyebrow (ej: Editorial)" value={cmsNewSlide.eyebrow} onChange={(e) => setCmsNewSlide((s) => ({ ...s, eyebrow: e.target.value }))} />
+                          <input className="admin-input" placeholder="Título*" value={cmsNewSlide.titulo} onChange={(e) => setCmsNewSlide((s) => ({ ...s, titulo: e.target.value }))} />
+                          <textarea className="admin-input" rows={2} placeholder="Descripción" value={cmsNewSlide.descripcion} onChange={(e) => setCmsNewSlide((s) => ({ ...s, descripcion: e.target.value }))} />
+                          <input className="admin-input" placeholder="URL de imagen*" value={cmsNewSlide.imagen_url} onChange={(e) => setCmsNewSlide((s) => ({ ...s, imagen_url: e.target.value }))} />
+                          <button type="button" className="btn-primary text-sm px-5 py-2.5 rounded-full" onClick={handleAddSlide}>+ Añadir slide</button>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
       </section>
     </main>
   );

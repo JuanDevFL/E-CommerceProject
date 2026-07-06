@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import { isMockLoginMode } from './data/mockAuthUsers.js';
 import { assertAuthSecretsAreSafe } from './auth.js';
 import checkoutRoutes from './routes/checkoutRoutes.js';
+import { getPublicFilters, getPublicContent, getPublicCarousel } from './controllers/cmsController.js';
 import { requestLogger } from './middleware/requestLogger.js';
 import accountRoutes from './routes/accountRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
@@ -63,6 +64,11 @@ app.use('/api/checkout', checkoutRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/anuncios', announcementRoutes);
 app.use('/api/cuenta', accountRoutes);
+
+// Rutas CMS públicas (sin auth)
+app.get('/api/cms/filters',  getPublicFilters);
+app.get('/api/cms/content',  getPublicContent);
+app.get('/api/cms/carousel', getPublicCarousel);
 
 app.use((err, req, res, next) => {
   console.error(err.stack);
