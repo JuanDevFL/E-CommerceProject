@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 :root {
-  --font-primary: 'GFS Didot', 'Didot', 'Bodoni MT', 'Times New Roman', serif;
+  --font-primary: 'Questrial', ui-sans-serif, system-ui, sans-serif;
   --color-danger: #ef4444;
 }
 
