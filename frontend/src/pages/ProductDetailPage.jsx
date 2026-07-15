@@ -3,6 +3,42 @@ import { useEffect, useMemo, useState } from 'react';
 import { formatPrice } from '../utils/pricing.js';
 import { translateCategoryLabel, translateProductTagLabel } from '../utils/catalogLabels.js';
 
+const TONE_TO_HEX = {
+  negro: '#121212',
+  marfil: '#f6f0e6',
+  crema: '#eadfca',
+  borgona: '#701f33',
+  vino: '#6f112f',
+  camel: '#c99657',
+  cafe: '#704214',
+  chocolate: '#4e342e',
+  azul: '#1f4b99',
+  verde: '#2f7f54',
+  rojo: '#b33636',
+  blanco: '#fafafa',
+  gris: '#8d93a3',
+  morado: '#7a4fb6',
+  lila: '#b095d9',
+  rosa: '#d36e9f',
+};
+
+function normalizeToneForLookup(value) {
+  return String(value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .trim();
+}
+
+function resolveVariantColor(variant) {
+  if (variant?.hex && /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(variant.hex)) {
+    return variant.hex;
+  }
+
+  const key = normalizeToneForLookup(variant?.nombre);
+  return TONE_TO_HEX[key] || '#d4d4d8';
+}
+
 function ProductDetailPage({ products, productsLoading = false, wishlistIds = [], onAddToCart, onBuyNow, onToggleWishlist }) {
   const { productId } = useParams();
   const product = products.find((p) => String(p.id) === String(productId));
@@ -123,10 +159,14 @@ function ProductDetailPage({ products, productsLoading = false, wishlistIds = []
                 <button
                   key={`${product.id}-${variant.nombre}-${index}`}
                   type="button"
-                  className="product-detail-color-pill"
+                  className={`product-detail-color-dot ${selectedColorIndex === index ? 'is-active' : ''}`}
                   onClick={() => setSelectedColorIndex(index)}
+                  style={{ '--dot-color': resolveVariantColor(variant) }}
+                  aria-label={`Color ${variant.nombre}`}
+                  data-color-name={variant.nombre}
+                  title={variant.nombre}
                 >
-                  {variant.nombre}
+                  <span className="sr-only">{variant.nombre}</span>
                 </button>
               ))}
             </div>
