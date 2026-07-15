@@ -331,19 +331,20 @@
   gap: 1rem;
 }
 
-.admin-product-create-layout {
+.admin-product-create-form {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.admin-product-create-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 1rem;
   align-items: start;
 }
 
-.admin-product-main-column,
-.admin-product-color-column {
-  border: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent 30%);
-  border-radius: 1.2rem;
-  background: color-mix(in srgb, var(--color-background-alt) 76%, transparent 24%);
-  padding: 0.95rem;
+.admin-product-colors-panel {
+  min-height: 100%;
 }
 
 .admin-form-grid {
@@ -823,7 +824,7 @@
   .admin-order-detail-grid,
   .admin-color-builder-grid,
   .admin-color-image-row,
-  .admin-product-create-layout {
+  .admin-product-create-grid {
     grid-template-columns: 1fr;
   }
 

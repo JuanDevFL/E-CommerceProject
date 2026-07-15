@@ -1831,197 +1831,194 @@ function AdminDashboardPage({ user, onProductCreated }) {
             )}
 
             {activeTab === 'productos' && (
-            <section className="admin-management-grid">
-              <article className="admin-panel">
-                <div className="admin-panel-head">
-                  <div>
-                    <p className="admin-panel-kicker">Gestión de productos</p>
-                    <h2>Alta rápida de catálogo</h2>
+            <form className="admin-product-create-form" onSubmit={handleCreateProduct}>
+              <section className="admin-product-create-grid">
+                <article className="admin-panel">
+                  <div className="admin-panel-head">
+                    <div>
+                      <p className="admin-panel-kicker">Gestión de productos</p>
+                      <h2>Alta rápida de catálogo</h2>
+                    </div>
                   </div>
-                </div>
 
-                <form className="admin-product-form" onSubmit={handleCreateProduct}>
                   <div className="admin-inline-actions" style={{ marginBottom: '0.75rem' }}>
                     <button type="button" className="admin-secondary-button" onClick={applyPruebaPresetToCreate}>
                       Cargar demo PRUEBA IMG
                     </button>
                   </div>
-                  <div className="admin-product-create-layout">
-                    <div className="admin-product-main-column">
-                      <div className="admin-form-grid">
-                        <label className="admin-field admin-field-wide">
-                          <span>Nombre</span>
-                          <input type="text" name="nombre" value={productForm.nombre} onChange={handleProductFieldChange} placeholder="Bolso Azami Atelier" required />
-                        </label>
 
-                        <label className="admin-field admin-field-wide">
-                          <span>Descripción</span>
-                          <textarea name="descripcion" value={productForm.descripcion} onChange={handleProductFieldChange} placeholder="Detalle editorial del producto" rows="4" />
-                        </label>
+                  <div className="admin-form-grid">
+                    <label className="admin-field admin-field-wide">
+                      <span>Nombre</span>
+                      <input type="text" name="nombre" value={productForm.nombre} onChange={handleProductFieldChange} placeholder="Bolso Azami Atelier" required />
+                    </label>
 
-                        <label className="admin-field">
-                          <span>Precio (COP)</span>
-                          <input type="number" min="1000" step="1000" name="precio" value={productForm.precio} onChange={handleProductFieldChange} placeholder="1080000" required />
-                        </label>
+                    <label className="admin-field admin-field-wide">
+                      <span>Descripción</span>
+                      <textarea name="descripcion" value={productForm.descripcion} onChange={handleProductFieldChange} placeholder="Detalle editorial del producto" rows="4" />
+                    </label>
 
-                        <label className="admin-field">
-                          <span>Stock</span>
-                          <input type="number" min="0" step="1" name="stock" value={productForm.stock} onChange={handleProductFieldChange} placeholder="12" />
-                        </label>
+                    <label className="admin-field">
+                      <span>Precio (COP)</span>
+                      <input type="number" min="1000" step="1000" name="precio" value={productForm.precio} onChange={handleProductFieldChange} placeholder="1080000" required />
+                    </label>
 
-                        <label className="admin-field">
-                          <span>Categoría</span>
-                          <input type="text" name="categoria" value={productForm.categoria} onChange={handleProductFieldChange} placeholder="Colección Atelier" />
-                        </label>
+                    <label className="admin-field">
+                      <span>Stock</span>
+                      <input type="number" min="0" step="1" name="stock" value={productForm.stock} onChange={handleProductFieldChange} placeholder="12" />
+                    </label>
 
-                        <label className="admin-field">
-                          <span>Tono</span>
-                          <input type="text" name="tono" value={productForm.tono} onChange={handleProductFieldChange} placeholder="Marfil" />
-                        </label>
+                    <label className="admin-field">
+                      <span>Categoría</span>
+                      <input type="text" name="categoria" value={productForm.categoria} onChange={handleProductFieldChange} placeholder="Colección Atelier" />
+                    </label>
 
-                        <label className="admin-field">
-                          <span>Material</span>
-                          <input type="text" name="material" value={productForm.material} onChange={handleProductFieldChange} placeholder="Cuero premium" />
-                        </label>
+                    <label className="admin-field">
+                      <span>Tono</span>
+                      <input type="text" name="tono" value={productForm.tono} onChange={handleProductFieldChange} placeholder="Marfil" />
+                    </label>
 
-                        <label className="admin-field">
-                          <span>Etiqueta</span>
-                          <input type="text" name="etiqueta" value={productForm.etiqueta} onChange={handleProductFieldChange} placeholder="Lanzamiento" />
-                        </label>
-                      </div>
-                    </div>
+                    <label className="admin-field">
+                      <span>Material</span>
+                      <input type="text" name="material" value={productForm.material} onChange={handleProductFieldChange} placeholder="Cuero premium" />
+                    </label>
 
-                    <div className="admin-product-color-column">
-                      <div className="admin-field">
-                      <span>Colores e imágenes del producto</span>
-                      <div className="admin-color-builder-grid">
-                        <div className="admin-color-builder-main">
-                          <div className="admin-color-chip-row">
-                            {createColorVariants.map((variant, index) => (
-                              <button
-                                key={`create-color-${index}`}
-                                type="button"
-                                className={`admin-color-chip ${activeCreateColorIndex === index ? 'is-active' : ''}`}
-                                onClick={() => setActiveCreateColorIndex(index)}
-                              >
-                                <span
-                                  className="admin-color-chip-dot"
-                                  aria-hidden="true"
-                                  style={{ background: isValidHexColor(variant.hex) ? variant.hex : 'var(--color-surface-alt)' }}
-                                />
-                                {variant.nombre || `Color ${index + 1}`}
-                              </button>
-                            ))}
-                          </div>
-
-                          <div className="admin-color-chip-actions">
-                            <button type="button" className="admin-secondary-button" onClick={addCreateColorVariant}>+ Añadir color</button>
-                            {createColorVariants.length > 1 && (
-                              <button type="button" className="admin-secondary-button" onClick={() => removeCreateColorVariant(activeCreateColorIndex)}>
-                                Eliminar color activo
-                              </button>
-                            )}
-                          </div>
-
-                          <div className="admin-form-grid admin-color-fields-grid">
-                            <label className="admin-field">
-                              <span>Nombre del color</span>
-                              <input
-                                type="text"
-                                value={activeCreateVariant.nombre || ''}
-                                onChange={(event) => updateCreateColorVariantField(activeCreateColorIndex, 'nombre', event.target.value)}
-                                placeholder="Ej: Negro"
-                              />
-                            </label>
-                            <label className="admin-field">
-                              <span>HEX (opcional)</span>
-                              <div className="admin-color-input-wrap">
-                                <span className="admin-color-preview-dot" aria-hidden="true" style={{ background: activeCreateVariantSummaryColor }} />
-                                <input
-                                  type="text"
-                                  value={activeCreateVariant.hex || ''}
-                                  onChange={(event) => updateCreateColorVariantField(activeCreateColorIndex, 'hex', event.target.value)}
-                                  placeholder="#121212"
-                                />
-                              </div>
-                            </label>
-                          </div>
-
-                          <input
-                            ref={createImageInputRef}
-                            type="file"
-                            accept="image/*"
-                            style={{ display: 'none' }}
-                            onChange={handleCreateImageFile}
-                          />
-
-                          <div className="admin-color-image-grid">
-                            {[0, 1, 2].map((imageIndex) => {
-                              const field = imageFieldByIndex(imageIndex);
-                              return (
-                                <div key={`create-image-slot-${imageIndex}`} className="admin-color-image-row">
-                                  <button
-                                    type="button"
-                                    className="admin-secondary-button"
-                                    onClick={() => {
-                                      setPendingCreateImageSlot(imageIndex);
-                                      createImageInputRef.current?.click();
-                                    }}
-                                    disabled={isUploadingCreateImage}
-                                  >
-                                    {isUploadingCreateImage && pendingCreateImageSlot === imageIndex ? 'Subiendo...' : `Subir imagen ${imageIndex + 1}`}
-                                  </button>
-                                  <input
-                                    type="url"
-                                    value={activeCreateVariant[field] || ''}
-                                    onChange={(event) => updateCreateColorVariantField(activeCreateColorIndex, field, event.target.value)}
-                                    placeholder={`URL imagen ${imageIndex + 1} del color activo`}
-                                    className="admin-image-url-input"
-                                  />
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-
-                        <aside className="admin-color-side-panel is-boxed" aria-label="Resumen del color activo">
-                          <div className="admin-color-side-head">
-                            <span className="admin-color-preview-dot" aria-hidden="true" style={{ background: activeCreateVariantSummaryColor }} />
-                            <div>
-                              <strong>{activeCreateVariant.nombre || `Color ${activeCreateColorIndex + 1}`}</strong>
-                              <small>{activeCreateVariant.hex || 'Sin HEX definido'}</small>
-                            </div>
-                          </div>
-
-                          <p>
-                            Este color tiene {activeCreateVariantImages.length} imagen(es) cargadas.
-                          </p>
-
-                          {activeCreateVariantImages.length > 0 ? (
-                            <div className="admin-color-side-gallery">
-                              {activeCreateVariantImages.map((imageUrl, index) => (
-                                <img key={`${imageUrl}-${index}`} src={imageUrl} alt={`Vista previa ${index + 1} del color activo`} loading="lazy" referrerPolicy="no-referrer" />
-                              ))}
-                            </div>
-                          ) : (
-                            <p className="admin-color-side-empty">Aún no hay imágenes para este color.</p>
-                          )}
-
-                          <small className="admin-color-side-tip">
-                            Ejemplo: crea "Miel", agrega su HEX y carga 3 fotos para mostrar su mini carrusel en tienda.
-                          </small>
-                        </aside>
-                      </div>
-                    </div>
-                    </div>
+                    <label className="admin-field">
+                      <span>Etiqueta</span>
+                      <input type="text" name="etiqueta" value={productForm.etiqueta} onChange={handleProductFieldChange} placeholder="Lanzamiento" />
+                    </label>
                   </div>
 
                   <button type="submit" className="admin-primary-button" disabled={isCreatingProduct}>
                     {isCreatingProduct ? 'Guardando producto...' : 'Crear producto'}
                   </button>
-                </form>
-              </article>
-            </section>
+                </article>
+
+                <article className="admin-panel admin-product-colors-panel">
+                  <div className="admin-field">
+                    <span>Colores e imágenes del producto</span>
+                    <div className="admin-color-builder-grid">
+                      <div className="admin-color-builder-main">
+                        <div className="admin-color-chip-row">
+                          {createColorVariants.map((variant, index) => (
+                            <button
+                              key={`create-color-${index}`}
+                              type="button"
+                              className={`admin-color-chip ${activeCreateColorIndex === index ? 'is-active' : ''}`}
+                              onClick={() => setActiveCreateColorIndex(index)}
+                            >
+                              <span
+                                className="admin-color-chip-dot"
+                                aria-hidden="true"
+                                style={{ background: isValidHexColor(variant.hex) ? variant.hex : 'var(--color-surface-alt)' }}
+                              />
+                              {variant.nombre || `Color ${index + 1}`}
+                            </button>
+                          ))}
+                        </div>
+
+                        <div className="admin-color-chip-actions">
+                          <button type="button" className="admin-secondary-button" onClick={addCreateColorVariant}>+ Añadir color</button>
+                          {createColorVariants.length > 1 && (
+                            <button type="button" className="admin-secondary-button" onClick={() => removeCreateColorVariant(activeCreateColorIndex)}>
+                              Eliminar color activo
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="admin-form-grid admin-color-fields-grid">
+                          <label className="admin-field">
+                            <span>Nombre del color</span>
+                            <input
+                              type="text"
+                              value={activeCreateVariant.nombre || ''}
+                              onChange={(event) => updateCreateColorVariantField(activeCreateColorIndex, 'nombre', event.target.value)}
+                              placeholder="Ej: Negro"
+                            />
+                          </label>
+                          <label className="admin-field">
+                            <span>HEX (opcional)</span>
+                            <div className="admin-color-input-wrap">
+                              <span className="admin-color-preview-dot" aria-hidden="true" style={{ background: activeCreateVariantSummaryColor }} />
+                              <input
+                                type="text"
+                                value={activeCreateVariant.hex || ''}
+                                onChange={(event) => updateCreateColorVariantField(activeCreateColorIndex, 'hex', event.target.value)}
+                                placeholder="#121212"
+                              />
+                            </div>
+                          </label>
+                        </div>
+
+                        <input
+                          ref={createImageInputRef}
+                          type="file"
+                          accept="image/*"
+                          style={{ display: 'none' }}
+                          onChange={handleCreateImageFile}
+                        />
+
+                        <div className="admin-color-image-grid">
+                          {[0, 1, 2].map((imageIndex) => {
+                            const field = imageFieldByIndex(imageIndex);
+                            return (
+                              <div key={`create-image-slot-${imageIndex}`} className="admin-color-image-row">
+                                <button
+                                  type="button"
+                                  className="admin-secondary-button"
+                                  onClick={() => {
+                                    setPendingCreateImageSlot(imageIndex);
+                                    createImageInputRef.current?.click();
+                                  }}
+                                  disabled={isUploadingCreateImage}
+                                >
+                                  {isUploadingCreateImage && pendingCreateImageSlot === imageIndex ? 'Subiendo...' : `Subir imagen ${imageIndex + 1}`}
+                                </button>
+                                <input
+                                  type="url"
+                                  value={activeCreateVariant[field] || ''}
+                                  onChange={(event) => updateCreateColorVariantField(activeCreateColorIndex, field, event.target.value)}
+                                  placeholder={`URL imagen ${imageIndex + 1} del color activo`}
+                                  className="admin-image-url-input"
+                                />
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <aside className="admin-color-side-panel is-boxed" aria-label="Resumen del color activo">
+                        <div className="admin-color-side-head">
+                          <span className="admin-color-preview-dot" aria-hidden="true" style={{ background: activeCreateVariantSummaryColor }} />
+                          <div>
+                            <strong>{activeCreateVariant.nombre || `Color ${activeCreateColorIndex + 1}`}</strong>
+                            <small>{activeCreateVariant.hex || 'Sin HEX definido'}</small>
+                          </div>
+                        </div>
+
+                        <p>
+                          Este color tiene {activeCreateVariantImages.length} imagen(es) cargadas.
+                        </p>
+
+                        {activeCreateVariantImages.length > 0 ? (
+                          <div className="admin-color-side-gallery">
+                            {activeCreateVariantImages.map((imageUrl, index) => (
+                              <img key={`${imageUrl}-${index}`} src={imageUrl} alt={`Vista previa ${index + 1} del color activo`} loading="lazy" referrerPolicy="no-referrer" />
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="admin-color-side-empty">Aún no hay imágenes para este color.</p>
+                        )}
+
+                        <small className="admin-color-side-tip">
+                          Ejemplo: crea "Miel", agrega su HEX y carga 3 fotos para mostrar su mini carrusel en tienda.
+                        </small>
+                      </aside>
+                    </div>
+                  </div>
+                </article>
+              </section>
+            </form>
             )}
 
             {activeTab === 'ventas' && (
