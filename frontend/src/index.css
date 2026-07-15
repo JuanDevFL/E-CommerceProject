@@ -2137,8 +2137,6 @@ body {
 
 .menu-main-btn:hover,
 .menu-main-btn:focus-visible,
-.menu-item-group:hover .menu-main-btn,
-.menu-item-group:focus-within .menu-main-btn,
 .menu-item-group.is-open .menu-main-btn {
   color: var(--color-hover-ink);
   transform: translateX(4px);
@@ -2147,8 +2145,6 @@ body {
 
 .menu-main-btn:hover .menu-main-plus,
 .menu-main-btn:focus-visible .menu-main-plus,
-.menu-item-group:hover .menu-main-plus,
-.menu-item-group:focus-within .menu-main-plus,
 .menu-item-group.is-open .menu-main-plus {
   color: var(--color-hover-ink);
   transform: rotate(90deg);
@@ -2161,8 +2157,6 @@ body {
   display: none;
 }
 
-.menu-item-group:hover .submenu-list,
-.menu-item-group:focus-within .submenu-list,
 .menu-item-group.is-open .submenu-list {
   display: grid;
   gap: 0.3rem;

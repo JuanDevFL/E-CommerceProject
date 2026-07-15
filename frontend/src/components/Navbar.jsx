@@ -248,8 +248,6 @@ function Navbar({
                 <li
                   key={item.label}
                   className={`menu-item-group ${activeSubmenu === item.label ? 'is-open' : ''}`}
-                  onMouseEnter={() => setActiveSubmenu(item.label)}
-                  onMouseLeave={() => setActiveSubmenu('')}
                 >
                   <button
                     type="button"
@@ -468,6 +466,7 @@ function Navbar({
       <div
         className={`fixed inset-0 z-[63] navbar-panel fullscreen-menu-panel transition-all duration-300 lg:hidden ${isOpen ? 'opacity-100 scale-100 translate-y-0' : 'pointer-events-none opacity-0 scale-95 -translate-y-2'}`}
         aria-hidden={!isOpen}
+        onMouseLeave={closeMenu}
       >
         <div className="fullscreen-panel-header">
           <span className="text-lg font-semibold tracking-[0.24em] text-primary uppercase">Menu</span>
