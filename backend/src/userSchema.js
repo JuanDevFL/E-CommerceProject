@@ -72,6 +72,23 @@ export async function ensurePasswordResetTokensTable() {
   `);
 }
 
+export async function ensurePasswordResetPinsTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS password_reset_pins (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      usuario_id INT NOT NULL,
+      pin_hash VARCHAR(255) NOT NULL,
+      expira_at TIMESTAMP NOT NULL,
+      intentos INT NOT NULL DEFAULT 0,
+      usado BOOLEAN DEFAULT FALSE,
+      creado_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+      INDEX idx_prp_usuario (usuario_id),
+      INDEX idx_prp_expira (expira_at)
+    )
+  `);
+}
+
 export async function ensureActividadLogsTable() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS actividad_logs (

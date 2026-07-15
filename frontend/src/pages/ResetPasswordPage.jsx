@@ -1,10 +1,13 @@
 import { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { resetPassword } from '../api.js';
 
 function ResetPasswordPage() {
   const { token } = useParams();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const [email, setEmail] = useState(searchParams.get('email') || '');
+  const [pin, setPin] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
@@ -16,8 +19,8 @@ function ResetPasswordPage() {
     setError('');
     setSuccess('');
 
-    if (password.length < 6) {
-      setError('La contraseña debe tener al menos 6 caracteres.');
+    if (password.length < 8) {
+      setError('La contraseña debe tener al menos 8 caracteres.');
       return;
     }
 
@@ -26,10 +29,26 @@ function ResetPasswordPage() {
       return;
     }
 
+    if (!token) {
+      if (!email.trim()) {
+        setError('Debes ingresar el correo registrado.');
+        return;
+      }
+
+      if (!pin.trim()) {
+        setError('Debes ingresar el PIN enviado al correo.');
+        return;
+      }
+    }
+
     setIsSubmitting(true);
 
     try {
-      const result = await resetPassword({ token, password });
+      const payload = token
+        ? { token, password }
+        : { email: email.trim(), pin: pin.trim(), password };
+
+      const result = await resetPassword(payload);
       setSuccess(result.message);
     } catch (requestError) {
       setError(requestError.message || 'No se pudo restablecer la contraseña.');
@@ -44,8 +63,44 @@ function ResetPasswordPage() {
         <form className="auth-form" onSubmit={handleSubmit}>
           <div className="auth-form-header">
             <h2>Nueva contraseña</h2>
-            <p>Ingresa tu nueva contraseña para restablecer el acceso a tu cuenta.</p>
+            <p>
+              {token
+                ? 'Ingresa tu nueva contraseña para restablecer el acceso a tu cuenta.'
+                : 'Ingresa tu correo, el PIN enviado y tu nueva contraseña.'}
+            </p>
           </div>
+
+          {!token ? (
+            <>
+              <label className="auth-field">
+                <span>Correo registrado</span>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="tu@correo.com"
+                  required
+                  disabled={!!success}
+                />
+              </label>
+
+              <label className="auth-field">
+                <span>PIN de verificación</span>
+                <input
+                  type="text"
+                  value={pin}
+                  onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  placeholder="123456"
+                  inputMode="numeric"
+                  pattern="[0-9]{6}"
+                  minLength={6}
+                  maxLength={6}
+                  required
+                  disabled={!!success}
+                />
+              </label>
+            </>
+          ) : null}
 
           <label className="auth-field">
             <span>Nueva contraseña</span>
@@ -54,7 +109,7 @@ function ResetPasswordPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              minLength={6}
+              minLength={8}
               required
               disabled={!!success}
             />
@@ -67,7 +122,7 @@ function ResetPasswordPage() {
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="••••••••"
-              minLength={6}
+              minLength={8}
               required
               disabled={!!success}
             />

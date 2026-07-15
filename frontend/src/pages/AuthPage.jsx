@@ -127,7 +127,7 @@ function AuthPage({ onAuthSuccess }) {
               </h2>
               <p>
                 {mode === 'forgot'
-                  ? 'Ingresa tu correo y te enviaremos instrucciones para restablecer tu contraseña.'
+                  ? 'Ingresa tu correo y te enviaremos un PIN para restablecer tu contraseña.'
                   : mode === 'login'
                     ? 'Accede con tu correo y contraseña para continuar con tu selección.'
                     : 'Registra tu cuenta para guardar piezas y usar el carrito entre sesiones.'}
@@ -228,16 +228,25 @@ function AuthPage({ onAuthSuccess }) {
               {isSubmitting
                 ? 'Procesando...'
                 : mode === 'forgot'
-                  ? 'Enviar instrucciones'
+                  ? 'Enviar PIN'
                   : mode === 'login'
                     ? 'Entrar'
                     : 'Crear cuenta'}
             </button>
 
             {mode === 'forgot' && (
-              <button type="button" className="auth-back-link" onClick={() => switchMode('login')}>
-                Volver al inicio de sesión
-              </button>
+              <>
+                <button
+                  type="button"
+                  className="auth-back-link"
+                  onClick={() => navigate(`/reset-password?email=${encodeURIComponent(formState.email || '')}`)}
+                >
+                  Ya tengo PIN
+                </button>
+                <button type="button" className="auth-back-link" onClick={() => switchMode('login')}>
+                  Volver al inicio de sesión
+                </button>
+              </>
             )}
           </form>
         </div>

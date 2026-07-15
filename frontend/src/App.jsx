@@ -763,6 +763,7 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
         <Route
           path="/admin"

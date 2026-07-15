@@ -18,6 +18,7 @@ import {
   ensureActividadLogsTable,
   ensureAddressesTable,
   ensureAnnouncementsTable,
+  ensurePasswordResetPinsTable,
   ensureDiscountTables,
   ensureOrdersTable,
   ensurePasswordResetTokensTable,
@@ -92,6 +93,7 @@ async function bootstrap() {
     if (!isMockLoginMode()) {
       await ensureUsuariosTable();
       await ensurePasswordResetTokensTable();
+      await ensurePasswordResetPinsTable();
       await ensureActividadLogsTable();
       await ensureRefreshTokensTable();
       await ensureProductosTableEnhancements();

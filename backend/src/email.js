@@ -75,6 +75,32 @@ export async function sendPasswordResetEmail({ to, resetUrl }) {
   return sendEmail({ to, subject, html, text });
 }
 
+export async function sendPasswordResetPinEmail({ to, pin, expiresMinutes = 15 }) {
+  const { storefrontName, appUrl } = getEmailSettings();
+  const subject = `${storefrontName}: tu PIN para restablecer contraseña`;
+  const text = [
+    `Recibimos una solicitud para restablecer tu contraseña en ${storefrontName}.`,
+    `Tu PIN de verificación es: ${pin}`,
+    `Este PIN vence en ${expiresMinutes} minutos.`,
+    `Ingresa el PIN en ${appUrl}/reset-password para crear tu nueva contraseña.`,
+    'Si no solicitaste este cambio, ignora este correo.',
+  ].join('\n\n');
+
+  const html = `
+    <div style="font-family: Georgia, serif; color: #1f1c1a; line-height: 1.6;">
+      <h1 style="margin-bottom: 0.5rem;">Restablece tu contraseña</h1>
+      <p>Recibimos una solicitud para restablecer tu contraseña en <strong>${storefrontName}</strong>.</p>
+      <p>Tu PIN de verificación es:</p>
+      <p style="font-size: 2rem; letter-spacing: 0.35rem; font-weight: 700; margin: 0.8rem 0 1rem;">${pin}</p>
+      <p>Este PIN vence en <strong>${expiresMinutes} minutos</strong>.</p>
+      <p>Ingresa el código en <a href="${appUrl}/reset-password">${appUrl}/reset-password</a>.</p>
+      <p style="font-size: 0.9rem; color: #6f665f;">Si no solicitaste este cambio, ignora este correo.</p>
+    </div>
+  `;
+
+  return sendEmail({ to, subject, html, text });
+}
+
 export async function sendOrderConfirmationEmail({ to, customerName, order }) {
   if (!to) {
     return { skipped: true, reason: 'missing-recipient' };

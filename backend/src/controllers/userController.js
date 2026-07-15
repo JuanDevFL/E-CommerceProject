@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import { signAuthToken, signRefreshToken, verifyRefreshToken } from '../auth.js';
 import { findMockAuthUser, isMockLoginMode } from '../data/mockAuthUsers.js';
 import pool from '../db.js';
-import { sendPasswordResetEmail } from '../email.js';
+import { sendPasswordResetPinEmail } from '../email.js';
 import { validatePasswordPolicy } from '../passwordPolicy.js';
 import { logActividad, normalizeUserRole } from '../userSchema.js';
 
@@ -295,7 +295,7 @@ export async function forgotPassword(req, res, next) {
       return res.status(400).json({ error: 'El correo es obligatorio' });
     }
 
-    const successMessage = 'Si el correo está registrado, recibirás instrucciones para restablecer tu contraseña.';
+    const successMessage = 'Si el correo está registrado, recibirás un PIN para restablecer tu contraseña.';
 
     const [rows] = await pool.query('SELECT id FROM usuarios WHERE email = ?', [email]);
     if (rows.length === 0) {
@@ -304,24 +304,27 @@ export async function forgotPassword(req, res, next) {
 
     const user = rows[0];
 
-    // Invalidate any previous unused tokens for this user
+    // Invalidar PIN anteriores sin usar para que solo quede vigente el más reciente.
     await pool.query(
-      'UPDATE password_reset_tokens SET usado = TRUE WHERE usuario_id = ? AND usado = FALSE',
+      'UPDATE password_reset_pins SET usado = TRUE WHERE usuario_id = ? AND usado = FALSE',
       [user.id]
     );
 
-    const token = crypto.randomBytes(32).toString('hex');
-    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
-    const expiraAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+    const pin = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
+    const pinHash = crypto.createHash('sha256').update(pin).digest('hex');
+    const pinExpiresMinutes = 15;
+    const expiraAt = new Date(Date.now() + pinExpiresMinutes * 60 * 1000);
 
     await pool.query(
-      'INSERT INTO password_reset_tokens (usuario_id, token_hash, expira_at) VALUES (?, ?, ?)',
-      [user.id, tokenHash, expiraAt]
+      'INSERT INTO password_reset_pins (usuario_id, pin_hash, expira_at) VALUES (?, ?, ?)',
+      [user.id, pinHash, expiraAt]
     );
 
-    const appUrl = String(process.env.FRONTEND_APP_URL || 'http://localhost:5173').trim().replace(/\/$/, '');
-    const resetUrl = `${appUrl}/reset-password/${token}`;
-    await sendPasswordResetEmail({ to: email, resetUrl });
+    await sendPasswordResetPinEmail({
+      to: email,
+      pin,
+      expiresMinutes: pinExpiresMinutes,
+    });
 
     await logActividad({
       usuarioId: rows.length > 0 ? rows[0].id : null,
@@ -340,10 +343,12 @@ export async function forgotPassword(req, res, next) {
 
 export async function resetPassword(req, res, next) {
   try {
-    const { token, password } = req.body;
+    const { token, password, email: rawEmail, pin: rawPin } = req.body;
+    const email = rawEmail?.trim().toLowerCase();
+    const pin = String(rawPin || '').trim();
 
-    if (!token || !password) {
-      return res.status(400).json({ error: 'Token y nueva contraseña son obligatorios' });
+    if (!password) {
+      return res.status(400).json({ error: 'La nueva contraseña es obligatoria' });
     }
 
     const passwordValidationError = validatePasswordPolicy(password);
@@ -351,27 +356,86 @@ export async function resetPassword(req, res, next) {
       return res.status(400).json({ error: passwordValidationError });
     }
 
-    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    // Compatibilidad con enlaces de recuperación antiguos basados en token.
+    if (token) {
+      const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
 
-    const [rows] = await pool.query(
-      'SELECT id, usuario_id FROM password_reset_tokens WHERE token_hash = ? AND usado = FALSE AND expira_at > NOW()',
-      [tokenHash]
-    );
+      const [rows] = await pool.query(
+        'SELECT id, usuario_id FROM password_reset_tokens WHERE token_hash = ? AND usado = FALSE AND expira_at > NOW()',
+        [tokenHash]
+      );
 
-    if (rows.length === 0) {
-      return res.status(400).json({ error: 'El enlace es inválido o ha expirado' });
+      if (rows.length === 0) {
+        return res.status(400).json({ error: 'El enlace es inválido o ha expirado' });
+      }
+
+      const resetRecord = rows[0];
+      const passwordHash = await bcrypt.hash(password, 12);
+
+      await pool.query('UPDATE usuarios SET password = ? WHERE id = ?', [passwordHash, resetRecord.usuario_id]);
+      await pool.query('UPDATE password_reset_tokens SET usado = TRUE WHERE id = ?', [resetRecord.id]);
+      await pool.query('UPDATE refresh_tokens SET revocado = TRUE WHERE usuario_id = ?', [resetRecord.usuario_id]);
+
+      await logActividad({
+        usuarioId: resetRecord.usuario_id,
+        accion: 'reset_password',
+        descripcion: 'Contraseña restablecida exitosamente con enlace',
+        ip: clientIp(req),
+        userAgent: clientUserAgent(req),
+        resultado: 'ok',
+      });
+
+      return res.json({ message: 'Contraseña actualizada correctamente. Ya puedes iniciar sesión.' });
     }
 
-    const resetRecord = rows[0];
+    if (!email || !pin) {
+      return res.status(400).json({ error: 'Correo, PIN y nueva contraseña son obligatorios' });
+    }
+
+    const [userRows] = await pool.query('SELECT id FROM usuarios WHERE email = ? LIMIT 1', [email]);
+    if (userRows.length === 0) {
+      return res.status(400).json({ error: 'El PIN es inválido o ha expirado' });
+    }
+
+    const userId = userRows[0].id;
+
+    const [pinRows] = await pool.query(
+      `SELECT id, pin_hash, intentos
+       FROM password_reset_pins
+       WHERE usuario_id = ? AND usado = FALSE AND expira_at > NOW()
+       ORDER BY id DESC
+       LIMIT 1`,
+      [userId]
+    );
+
+    if (pinRows.length === 0) {
+      return res.status(400).json({ error: 'El PIN es inválido o ha expirado' });
+    }
+
+    const pinRecord = pinRows[0];
+    const pinHash = crypto.createHash('sha256').update(pin).digest('hex');
+    const pinMatches = pinHash === pinRecord.pin_hash;
+
+    if (!pinMatches) {
+      const nextAttempts = Number(pinRecord.intentos || 0) + 1;
+      const shouldInvalidate = nextAttempts >= 5;
+      await pool.query(
+        'UPDATE password_reset_pins SET intentos = ?, usado = ? WHERE id = ?',
+        [nextAttempts, shouldInvalidate, pinRecord.id]
+      );
+      return res.status(400).json({ error: 'El PIN es inválido o ha expirado' });
+    }
+
     const passwordHash = await bcrypt.hash(password, 12);
 
-    await pool.query('UPDATE usuarios SET password = ? WHERE id = ?', [passwordHash, resetRecord.usuario_id]);
-    await pool.query('UPDATE password_reset_tokens SET usado = TRUE WHERE id = ?', [resetRecord.id]);
+    await pool.query('UPDATE usuarios SET password = ? WHERE id = ?', [passwordHash, userId]);
+    await pool.query('UPDATE password_reset_pins SET usado = TRUE WHERE id = ?', [pinRecord.id]);
+    await pool.query('UPDATE refresh_tokens SET revocado = TRUE WHERE usuario_id = ?', [userId]);
 
     await logActividad({
-      usuarioId: resetRecord.usuario_id,
-      accion: 'reset_password',
-      descripcion: 'Contraseña restablecida exitosamente',
+      usuarioId: userId,
+      accion: 'reset_password_pin',
+      descripcion: 'Contraseña restablecida exitosamente con PIN',
       ip: clientIp(req),
       userAgent: clientUserAgent(req),
       resultado: 'ok',
