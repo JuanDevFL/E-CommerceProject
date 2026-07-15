@@ -116,10 +116,17 @@ const initialGuestForm = {
 };
 
 function buildCartLines(cartItems) {
-  return cartItems.map((item) => `${item.quantity}x ${item.nombre}`).join(' | ');
+  return cartItems
+    .map((item) => `- ${item.quantity}x ${item.nombre} (${formatPrice(normalizePrice(item.precio) * item.quantity)})`)
+    .join('\n');
 }
 
-function buildWhatsappMessage({ user, customer, cartItems, total, address, reference }) {
+function normalizeWhatsappNumber(value) {
+  const digits = String(value || '').replace(/\D/g, '');
+  return digits;
+}
+
+function buildWhatsappMessage({ user, customer, cartItems, subtotal, discountTotal, shipping, total, address, reference }) {
   const customerName = customer?.name || user?.name || 'un cliente';
   const recipientName = address?.nombre_receptor || customerName;
   const addressLine = address
@@ -130,7 +137,11 @@ function buildWhatsappMessage({ user, customer, cartItems, total, address, refer
     `Hola, soy ${customerName} y quiero confirmar mi pedido Azami ${reference}.`,
     customer?.email ? `Correo: ${customer.email}.` : null,
     customer?.phone ? `Teléfono: ${customer.phone}.` : null,
-    `Productos: ${buildCartLines(cartItems)}.`,
+    'Detalle del pedido:',
+    buildCartLines(cartItems),
+    `Subtotal: ${formatPrice(subtotal)}.`,
+    discountTotal > 0 ? `Descuento: -${formatPrice(discountTotal)}.` : null,
+    `Envío: ${shipping === 0 ? 'Gratis' : formatPrice(shipping)}.`,
     `Total estimado: ${formatPrice(total)}.`,
     `Recibe: ${recipientName}.`,
     `Dirección de envío: ${addressLine}.`,
@@ -471,7 +482,8 @@ export default function CheckoutPage({ user, cartItems, onBackToCatalog, onOrder
         codigo_postal: guestForm.codigo_postal,
         pais: guestForm.pais,
       };
-  const whatsappNumber = import.meta.env.VITE_WHATSAPP_SALES_NUMBER || '573004651366';
+  const whatsappNumberRaw = import.meta.env.VITE_WHATSAPP_SALES_NUMBER || '573004651366';
+  const whatsappNumber = normalizeWhatsappNumber(whatsappNumberRaw);
   const whatsappCustomer = user
     ? {
         name: user.name,
@@ -485,8 +497,18 @@ export default function CheckoutPage({ user, cartItems, onBackToCatalog, onOrder
       };
 
   const whatsappMessage = useMemo(
-    () => buildWhatsappMessage({ user, customer: whatsappCustomer, cartItems, total, address: selectedAddress, reference }),
-    [cartItems, reference, selectedAddress, total, user, whatsappCustomer]
+    () => buildWhatsappMessage({
+      user,
+      customer: whatsappCustomer,
+      cartItems,
+      subtotal,
+      discountTotal,
+      shipping,
+      total,
+      address: selectedAddress,
+      reference,
+    }),
+    [cartItems, discountTotal, reference, selectedAddress, shipping, subtotal, total, user, whatsappCustomer]
   );
 
   const guestFieldsCompleted = Boolean(
@@ -504,7 +526,7 @@ export default function CheckoutPage({ user, cartItems, onBackToCatalog, onOrder
   const canCreateTestOrder = (user ? Boolean(selectedAddressId) : guestFieldsCompleted) && !hasUnsupportedItems;
   const canSendWhatsapp = user ? Boolean(selectedAddress) : guestFieldsCompleted;
 
-  const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(whatsappMessage)}`;
+  const whatsappUrl = `https://api.whatsapp.com/send?phone=${whatsappNumber}&text=${encodeURIComponent(whatsappMessage)}`;
   const whatsappPreviewMessage = canSendWhatsapp
     ? whatsappMessage
     : 'Completa tus datos de contacto y envío para generar el mensaje que se enviará por WhatsApp.';
@@ -768,8 +790,16 @@ export default function CheckoutPage({ user, cartItems, onBackToCatalog, onOrder
       return;
     }
 
+    if (!whatsappNumber || whatsappNumber.length < 8) {
+      setCheckoutError('Configura un número de WhatsApp válido para ventas (VITE_WHATSAPP_SALES_NUMBER).');
+      return;
+    }
+
     setCheckoutError('');
-    window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+    const popup = window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+    if (!popup) {
+      window.location.assign(whatsappUrl);
+    }
   }
 
   async function handleCreateTestOrder() {
