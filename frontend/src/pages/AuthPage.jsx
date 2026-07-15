@@ -223,6 +223,11 @@ function AuthPage({ onAuthSuccess }) {
 
             {error && <p className="auth-error">{error}</p>}
             {successMessage && <p className="auth-success">{successMessage}</p>}
+            {mode === 'forgot' && successMessage ? (
+              <p className="auth-subnote">
+                Revisa también Spam/Promociones. Si no llega, confirma que el correo esté registrado y vuelve a solicitar el PIN en 1 minuto.
+              </p>
+            ) : null}
 
             <button type="submit" className="btn-primary auth-submit-button" disabled={isSubmitting}>
               {isSubmitting

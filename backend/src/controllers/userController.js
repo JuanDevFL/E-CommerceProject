@@ -320,11 +320,29 @@ export async function forgotPassword(req, res, next) {
       [user.id, pinHash, expiraAt]
     );
 
-    await sendPasswordResetPinEmail({
-      to: email,
-      pin,
-      expiresMinutes: pinExpiresMinutes,
-    });
+    try {
+      await sendPasswordResetPinEmail({
+        to: email,
+        pin,
+        expiresMinutes: pinExpiresMinutes,
+      });
+    } catch (emailError) {
+      // No revelar fallos del proveedor al cliente para evitar enumeración de correos.
+      // En desarrollo dejamos el PIN en logs para pruebas locales.
+      console.error('[forgot-password] No se pudo enviar PIN por correo:', emailError?.message || emailError);
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn(`[forgot-password][dev-fallback] PIN para ${email}: ${pin}`);
+      }
+
+      await logActividad({
+        usuarioId: user.id,
+        accion: 'forgot_password_email_error',
+        descripcion: `Fallo al enviar PIN para: ${email}`,
+        ip: clientIp(req),
+        userAgent: clientUserAgent(req),
+        resultado: 'error',
+      });
+    }
 
     await logActividad({
       usuarioId: rows.length > 0 ? rows[0].id : null,
