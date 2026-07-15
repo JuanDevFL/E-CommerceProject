@@ -1979,7 +1979,7 @@ function AdminDashboardPage({ user, onProductCreated }) {
                           </div>
                         </div>
 
-                        <aside className="admin-color-side-card" aria-label="Resumen del color activo">
+                        <aside className="admin-color-side-panel" aria-label="Resumen del color activo">
                           <div className="admin-color-side-head">
                             <span className="admin-color-preview-dot" aria-hidden="true" style={{ background: activeCreateVariantSummaryColor }} />
                             <div>

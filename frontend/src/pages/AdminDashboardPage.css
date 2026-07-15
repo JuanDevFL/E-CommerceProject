@@ -416,11 +416,8 @@
   align-items: center;
 }
 
-.admin-color-side-card {
-  border-radius: 1.2rem;
-  border: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent 30%);
-  background: color-mix(in srgb, var(--color-background-alt) 78%, transparent 22%);
-  padding: 0.95rem;
+.admin-color-side-panel {
+  padding: 0.2rem 0.1rem;
   display: grid;
   gap: 0.75rem;
   align-content: start;
@@ -430,6 +427,7 @@
   display: flex;
   align-items: center;
   gap: 0.55rem;
+  padding-top: 0.2rem;
 }
 
 .admin-color-side-head strong {
@@ -437,7 +435,7 @@
 }
 
 .admin-color-side-head small,
-.admin-color-side-card p,
+.admin-color-side-panel p,
 .admin-color-side-empty,
 .admin-color-side-tip,
 .admin-discount-intro,
@@ -452,6 +450,7 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.4rem;
+  max-width: 17rem;
 }
 
 .admin-color-side-gallery img {
