@@ -299,6 +299,17 @@ export async function forgotPassword(req, res, next) {
 
     const [rows] = await pool.query('SELECT id FROM usuarios WHERE email = ?', [email]);
     if (rows.length === 0) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn(`[forgot-password] Correo no registrado: ${email}`);
+      }
+
+      await logActividad({
+        accion: 'forgot_password_email_not_found',
+        descripcion: `Solicitud de PIN para correo no registrado: ${email}`,
+        ip: clientIp(req),
+        userAgent: clientUserAgent(req),
+        resultado: 'ok',
+      });
       return res.json({ message: successMessage });
     }
 
@@ -326,6 +337,7 @@ export async function forgotPassword(req, res, next) {
         pin,
         expiresMinutes: pinExpiresMinutes,
       });
+      console.info(`[forgot-password] PIN enviado para: ${email}`);
     } catch (emailError) {
       // No revelar fallos del proveedor al cliente para evitar enumeración de correos.
       // En desarrollo dejamos el PIN en logs para pruebas locales.
