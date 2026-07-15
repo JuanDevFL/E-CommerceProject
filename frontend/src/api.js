@@ -1,6 +1,11 @@
 const API_URL = import.meta.env.VITE_API_URL || 'https://e-commerceproject-production-1031.up.railway.app/api';
 const SESSION_STORAGE_KEY = 'azami-user';
 
+function withCacheBust(endpoint) {
+  const separator = endpoint.includes('?') ? '&' : '?';
+  return `${endpoint}${separator}_=${Date.now()}`;
+}
+
 function isFormDataBody(body) {
   return typeof FormData !== 'undefined' && body instanceof FormData;
 }
@@ -175,18 +180,47 @@ export async function fetchActiveAnnouncements() {
 
 // ── CMS public ────────────────────────────────────────────────────────────────
 export async function fetchCmsFilters() {
-  return request('/cms/filters', { method: 'GET' });
+  return request(withCacheBust('/cms/filters'), {
+    method: 'GET',
+    cache: 'no-store',
+    headers: {
+      'Cache-Control': 'no-cache',
+      Pragma: 'no-cache',
+    },
+  });
 }
 export async function fetchCmsContent() {
-  return request('/cms/content', { method: 'GET' });
+  return request(withCacheBust('/cms/content'), {
+    method: 'GET',
+    cache: 'no-store',
+    headers: {
+      'Cache-Control': 'no-cache',
+      Pragma: 'no-cache',
+    },
+  });
 }
 export async function fetchCmsCarousel() {
-  return request('/cms/carousel', { method: 'GET' });
+  return request(withCacheBust('/cms/carousel'), {
+    method: 'GET',
+    cache: 'no-store',
+    headers: {
+      'Cache-Control': 'no-cache',
+      Pragma: 'no-cache',
+    },
+  });
 }
 
 // ── CMS admin ─────────────────────────────────────────────────────────────────
 export async function fetchAdminCmsFilters() {
-  return request('/admin/cms/filters', { method: 'GET', auth: true });
+  return request(withCacheBust('/admin/cms/filters'), {
+    method: 'GET',
+    auth: true,
+    cache: 'no-store',
+    headers: {
+      'Cache-Control': 'no-cache',
+      Pragma: 'no-cache',
+    },
+  });
 }
 export async function addAdminCmsFilter(payload) {
   return request('/admin/cms/filters', { method: 'POST', auth: true, body: JSON.stringify(payload) });
@@ -195,13 +229,29 @@ export async function deleteAdminCmsFilter(id) {
   return request(`/admin/cms/filters/${id}`, { method: 'DELETE', auth: true });
 }
 export async function fetchAdminCmsContent() {
-  return request('/admin/cms/content', { method: 'GET', auth: true });
+  return request(withCacheBust('/admin/cms/content'), {
+    method: 'GET',
+    auth: true,
+    cache: 'no-store',
+    headers: {
+      'Cache-Control': 'no-cache',
+      Pragma: 'no-cache',
+    },
+  });
 }
 export async function saveAdminCmsContent(items) {
   return request('/admin/cms/content', { method: 'POST', auth: true, body: JSON.stringify(items) });
 }
 export async function fetchAdminCmsCarousel() {
-  return request('/admin/cms/carousel', { method: 'GET', auth: true });
+  return request(withCacheBust('/admin/cms/carousel'), {
+    method: 'GET',
+    auth: true,
+    cache: 'no-store',
+    headers: {
+      'Cache-Control': 'no-cache',
+      Pragma: 'no-cache',
+    },
+  });
 }
 export async function addAdminCmsSlide(payload) {
   return request('/admin/cms/carousel', { method: 'POST', auth: true, body: JSON.stringify(payload) });

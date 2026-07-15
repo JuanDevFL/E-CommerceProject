@@ -248,6 +248,17 @@ function App() {
   const [pageTransition, setPageTransition] = useState(false);
   const prevPathRef = useRef(location.pathname);
 
+  const loadCmsData = useCallback(async () => {
+    try {
+      const content = await fetchCmsContent();
+      if (content && typeof content === 'object') {
+        setCmsContent(content);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
   const isAuthPage = location.pathname === '/auth' || location.pathname.startsWith('/reset-password');
   const isAdminPage = location.pathname.startsWith('/admin');
   const isHomePage = location.pathname === '/';
@@ -353,19 +364,17 @@ function App() {
   }, [isAuthPage]);
 
   useEffect(() => {
-    let active = true;
-    fetchCmsContent()
-      .then((content) => {
-        if (active && content && typeof content === 'object') {
-          setCmsContent(content);
-        }
-      })
-      .catch(() => {});
+    loadCmsData();
 
-    return () => {
-      active = false;
+    const onCmsUpdated = () => {
+      loadCmsData();
     };
-  }, []);
+
+    window.addEventListener('azami-cms-updated', onCmsUpdated);
+    return () => {
+      window.removeEventListener('azami-cms-updated', onCmsUpdated);
+    };
+  }, [loadCmsData]);
 
   useLayoutEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);

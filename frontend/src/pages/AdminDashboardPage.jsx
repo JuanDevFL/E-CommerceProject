@@ -391,6 +391,10 @@ function buildProductMediaPayload(variantForms, fallbackTone = '') {
   };
 }
 
+function isValidHexColor(value) {
+  return /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(String(value || '').trim());
+}
+
 function AdminDashboardPage({ user, onProductCreated }) {
   const offlineSalesInputRef = useRef(null);
   const createImageInputRef = useRef(null);
@@ -467,6 +471,12 @@ function AdminDashboardPage({ user, onProductCreated }) {
   const [productPage, setProductPage] = useState(0);
 
   const PAGE_SIZE = 10;
+
+  const notifyCmsUpdated = () => {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('azami-cms-updated'));
+    }
+  };
 
   const loadDashboard = async ({ showLoader = false } = {}) => {
     if (showLoader || !dashboard) {
@@ -1157,6 +1167,7 @@ function AdminDashboardPage({ user, onProductCreated }) {
         return { ...prev, [key]: [...(prev[key] || []), added] };
       });
       setCmsNewFilter((f) => ({ ...f, valor: '' }));
+      notifyCmsUpdated();
     } catch (err) { setActionError(err.message); }
   };
 
@@ -1167,6 +1178,7 @@ function AdminDashboardPage({ user, onProductCreated }) {
         const key = tipo === 'categoria' ? 'categorias' : 'tonos';
         return { ...prev, [key]: prev[key].filter((f) => f.id !== id) };
       });
+      notifyCmsUpdated();
     } catch (err) { setActionError(err.message); }
   };
 
@@ -1180,6 +1192,7 @@ function AdminDashboardPage({ user, onProductCreated }) {
       await saveAdminCmsContent(items);
       setSuccessMessage('Textos guardados correctamente.');
       setCmsFilters(null); // force reload
+      notifyCmsUpdated();
     } catch (err) { setActionError(err.message); }
     finally { setCmsSaving(false); }
   };
@@ -1193,6 +1206,7 @@ function AdminDashboardPage({ user, onProductCreated }) {
       const added = await addAdminCmsSlide(cmsNewSlide);
       setCmsCarousel((prev) => [...(prev || []), added]);
       setCmsNewSlide({ eyebrow: '', titulo: '', descripcion: '', imagen_url: '', orden: (cmsCarousel?.length || 0) });
+      notifyCmsUpdated();
     } catch (err) { setActionError(err.message); }
   };
 
@@ -1203,6 +1217,7 @@ function AdminDashboardPage({ user, onProductCreated }) {
       setCmsCarousel((prev) => prev.map((s) => (s.id === cmsEditSlide.id ? { ...s, ...cmsEditSlide } : s)));
       setCmsEditSlide(null);
       setSuccessMessage('Slide guardado.');
+      notifyCmsUpdated();
     } catch (err) { setActionError(err.message); }
   };
 
@@ -1210,6 +1225,7 @@ function AdminDashboardPage({ user, onProductCreated }) {
     try {
       await deleteAdminCmsSlide(id);
       setCmsCarousel((prev) => prev.filter((s) => s.id !== id));
+      notifyCmsUpdated();
     } catch (err) { setActionError(err.message); }
   };
 
@@ -1800,6 +1816,19 @@ function AdminDashboardPage({ user, onProductCreated }) {
                             }}
                             onClick={() => setActiveCreateColorIndex(index)}
                           >
+                            <span
+                              aria-hidden="true"
+                              style={{
+                                width: '0.7rem',
+                                height: '0.7rem',
+                                borderRadius: '9999px',
+                                marginRight: '0.45rem',
+                                display: 'inline-block',
+                                verticalAlign: 'middle',
+                                border: '1px solid color-mix(in srgb, var(--color-border) 80%, transparent)',
+                                background: isValidHexColor(variant.hex) ? variant.hex : 'var(--color-surface-alt)',
+                              }}
+                            />
                             {variant.nombre || `Color ${index + 1}`}
                           </button>
                         ))}
@@ -1827,12 +1856,27 @@ function AdminDashboardPage({ user, onProductCreated }) {
                         </label>
                         <label className="admin-field">
                           <span>HEX (opcional)</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
+                            <span
+                              aria-hidden="true"
+                              style={{
+                                width: '1.1rem',
+                                height: '1.1rem',
+                                borderRadius: '9999px',
+                                border: '1px solid color-mix(in srgb, var(--color-border) 80%, transparent)',
+                                background: isValidHexColor(createColorVariants[activeCreateColorIndex]?.hex)
+                                  ? createColorVariants[activeCreateColorIndex]?.hex
+                                  : 'var(--color-surface-alt)',
+                                flex: '0 0 auto',
+                              }}
+                            />
                           <input
                             type="text"
                             value={createColorVariants[activeCreateColorIndex]?.hex || ''}
                             onChange={(event) => updateCreateColorVariantField(activeCreateColorIndex, 'hex', event.target.value)}
                             placeholder="#121212"
                           />
+                          </div>
                         </label>
                       </div>
 
@@ -2490,6 +2534,19 @@ function AdminDashboardPage({ user, onProductCreated }) {
                           }}
                           onClick={() => setActiveEditColorIndex(index)}
                         >
+                          <span
+                            aria-hidden="true"
+                            style={{
+                              width: '0.7rem',
+                              height: '0.7rem',
+                              borderRadius: '9999px',
+                              marginRight: '0.45rem',
+                              display: 'inline-block',
+                              verticalAlign: 'middle',
+                              border: '1px solid color-mix(in srgb, var(--color-border) 80%, transparent)',
+                              background: isValidHexColor(variant.hex) ? variant.hex : 'var(--color-surface-alt)',
+                            }}
+                          />
                           {variant.nombre || `Color ${index + 1}`}
                         </button>
                       ))}
@@ -2517,12 +2574,27 @@ function AdminDashboardPage({ user, onProductCreated }) {
                       </label>
                       <label className="admin-field">
                         <span>HEX (opcional)</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
+                          <span
+                            aria-hidden="true"
+                            style={{
+                              width: '1.1rem',
+                              height: '1.1rem',
+                              borderRadius: '9999px',
+                              border: '1px solid color-mix(in srgb, var(--color-border) 80%, transparent)',
+                              background: isValidHexColor(editColorVariants[activeEditColorIndex]?.hex)
+                                ? editColorVariants[activeEditColorIndex]?.hex
+                                : 'var(--color-surface-alt)',
+                              flex: '0 0 auto',
+                            }}
+                          />
                         <input
                           type="text"
                           value={editColorVariants[activeEditColorIndex]?.hex || ''}
                           onChange={(event) => updateEditColorVariantField(activeEditColorIndex, 'hex', event.target.value)}
                           placeholder="#121212"
                         />
+                        </div>
                       </label>
                     </div>
 
