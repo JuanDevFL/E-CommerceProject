@@ -11,24 +11,24 @@
 :root {
   color-scheme: light;
   --color-background: #ffffff;
-  --color-background-alt: #faf6f1;
-  --color-surface: #f3ece3;
-  --color-surface-alt: #e9ddd0;
-  --color-primary: #8b3d4f;
-  --color-primary-dark: #6f2f3e;
-  --color-primary-soft: #b06f7f;
-  --color-heading: #231314;
-  --color-text: #2e1b1c;
-  --color-muted: #704347;
-  --color-border: #dcc9c5;
-  --color-panel: rgba(250, 246, 241, 0.94);
-  --color-overlay: rgba(35, 19, 20, 0.12);
+  --color-background-alt: #faf8ff;
+  --color-surface: #f3eeff;
+  --color-surface-alt: #ede9fe;
+  --color-primary: #8b5cf6;
+  --color-primary-dark: #7c3aed;
+  --color-primary-soft: #8b5cf6;
+  --color-heading: #1e0a3c;
+  --color-text: #1e0a3c;
+  --color-muted: #6d28d9;
+  --color-border: #ddd6fe;
+  --color-panel: rgba(250, 248, 255, 0.94);
+  --color-overlay: rgba(30, 10, 60, 0.12);
   --button-text: #ffffff;
-  --button-glow: 0 18px 40px rgba(111, 47, 62, 0.16);
-  --button-hover-glow: 0 24px 48px rgba(111, 47, 62, 0.24);
-  --color-hover-ink: #6f2f3e;
-  --color-shadow: 0 20px 80px rgba(111, 47, 62, 0.1);
-  --brand-logo-filter: brightness(0) saturate(100%) invert(20%) sepia(11%) saturate(2363%) hue-rotate(304deg) brightness(96%) contrast(87%);
+  --button-glow: 0 18px 40px rgba(109, 40, 217, 0.16);
+  --button-hover-glow: 0 24px 48px rgba(109, 40, 217, 0.24);
+  --color-hover-ink: #7c3aed;
+  --color-shadow: 0 20px 80px rgba(109, 40, 217, 0.1);
+  --brand-logo-filter: brightness(0) saturate(100%) invert(29%) sepia(72%) saturate(2324%) hue-rotate(245deg) brightness(98%) contrast(96%);
 }
 
 [data-theme='dark'] {
