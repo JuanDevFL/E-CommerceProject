@@ -1,6 +1,12 @@
 import pool from '../db.js';
 import { normalizeUserRole } from '../userSchema.js';
 import { uploadBuffer } from '../services/cloudinaryService.js';
+import {
+  createDiscountRule,
+  listDiscountRules,
+  sanitizeDiscountPayload,
+  updateDiscountRule,
+} from '../services/discountService.js';
 
 function toNumber(value) {
   return Number(value || 0);
@@ -141,7 +147,7 @@ export async function getAdminDashboard(req, res, next) {
         ORDER BY creado_at DESC
       `),
       pool.query(`
-        SELECT id, nombre, precio, stock, categoria, tono, etiqueta, creado_at
+        SELECT id, nombre, descripcion, precio, imagen_url, image_urls, stock, categoria, tono, color_variants_json, material, etiqueta, creado_at
         FROM productos
         ORDER BY creado_at DESC
       `),
@@ -436,6 +442,51 @@ export async function uploadImage(req, res, next) {
     const result = await uploadBuffer(req.file.buffer);
     res.json({ url: result.secure_url });
   } catch (error) {
+    next(error);
+  }
+}
+
+export async function getAdminDiscountRules(req, res, next) {
+  try {
+    const rules = await listDiscountRules();
+    res.json({ rules });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function createAdminDiscountRule(req, res, next) {
+  try {
+    const payload = sanitizeDiscountPayload(req.body);
+    const created = await createDiscountRule(payload);
+    res.status(201).json(created);
+  } catch (error) {
+    if (String(error?.message || '').includes('descuento')) {
+      return res.status(400).json({ error: error.message });
+    }
+    next(error);
+  }
+}
+
+export async function updateAdminDiscountRule(req, res, next) {
+  try {
+    const ruleId = Number(req.params.ruleId);
+    if (!Number.isInteger(ruleId) || ruleId <= 0) {
+      return res.status(400).json({ error: 'El identificador del descuento no es válido' });
+    }
+
+    const payload = sanitizeDiscountPayload(req.body);
+    const updated = await updateDiscountRule(ruleId, payload);
+
+    if (!updated) {
+      return res.status(404).json({ error: 'Regla de descuento no encontrada' });
+    }
+
+    res.json(updated);
+  } catch (error) {
+    if (String(error?.message || '').includes('descuento')) {
+      return res.status(400).json({ error: error.message });
+    }
     next(error);
   }
 }

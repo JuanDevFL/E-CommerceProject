@@ -1,5 +1,16 @@
 import express from 'express';
-import { createAnnouncement, getAdminDashboard, getOrderDetail, updateAnnouncement, updateOrderStatus, uploadImage, updateUsuarioRol } from '../controllers/adminController.js';
+import {
+	createAdminDiscountRule,
+	createAnnouncement,
+	getAdminDashboard,
+	getAdminDiscountRules,
+	getOrderDetail,
+	updateAdminDiscountRule,
+	updateAnnouncement,
+	updateOrderStatus,
+	updateUsuarioRol,
+	uploadImage,
+} from '../controllers/adminController.js';
 import { getAdminFilters, addFilter, deleteFilter, getAdminContent, upsertContent, getAdminCarousel, addSlide, updateSlide, deleteSlide } from '../controllers/cmsController.js';
 import multer from 'multer';
 import { downloadOfflineSalesTemplate, importOfflineSalesWorkbook } from '../controllers/offlineSalesController.js';
@@ -63,6 +74,9 @@ router.patch('/orders/:orderId/status', updateOrderStatus);
 router.patch('/users/:userId/role', updateUsuarioRol);
 router.post('/announcements', createAnnouncement);
 router.put('/announcements/:announcementId', updateAnnouncement);
+router.get('/discount-rules', getAdminDiscountRules);
+router.post('/discount-rules', createAdminDiscountRule);
+router.put('/discount-rules/:ruleId', updateAdminDiscountRule);
 
 // ── CMS ──────────────────────────────────────────────────────────────────────
 router.get('/cms/filters',          getAdminFilters);

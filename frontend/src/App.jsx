@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
-import { fetchActiveAnnouncements, fetchMyProfile, fetchProductos, logoutApi } from './api';
+import { fetchActiveAnnouncements, fetchCmsContent, fetchMyProfile, fetchProductos, logoutApi } from './api';
 import AnnouncementPopup from './components/AnnouncementPopup.jsx';
 import ConsentBanner from './components/ConsentBanner.jsx';
 import Navbar from './components/Navbar.jsx';
@@ -226,6 +226,7 @@ function App() {
   const [remoteProducts, setRemoteProducts] = useState([]);
   const [catalogNotice, setCatalogNotice] = useState('');
   const [catalogLoading, setCatalogLoading] = useState(true);
+  const [cmsContent, setCmsContent] = useState({});
   const [theme, setTheme] = useState(getInitialTheme);
   const [user, setUser] = useState(getInitialUser);
   const [cartItems, setCartItems] = useState(() => {
@@ -350,6 +351,21 @@ function App() {
       isMounted = false;
     };
   }, [isAuthPage]);
+
+  useEffect(() => {
+    let active = true;
+    fetchCmsContent()
+      .then((content) => {
+        if (active && content && typeof content === 'object') {
+          setCmsContent(content);
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useLayoutEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -607,6 +623,7 @@ function App() {
   }, [user, navigate]);
 
   const catalogProducts = remoteProducts.length > 0 ? remoteProducts : curatedProducts;
+  const catalogHeaderContent = cmsContent?.catalogo || {};
   const cartCount = cartItems.reduce((total, item) => total + item.quantity, 0);
   const cartSubtotal = cartItems.reduce((total, item) => total + (normalizePrice(item.precio) * item.quantity), 0);
 
@@ -664,6 +681,9 @@ function App() {
               catalogProducts={catalogProducts}
               catalogNotice={catalogNotice}
               catalogLoading={catalogLoading}
+              catalogHeadingEyebrow={catalogHeaderContent.eyebrow || 'Selección Azami'}
+              catalogHeadingTitle={catalogHeaderContent.titulo || 'Catálogo curado con filtros por estilo y tono'}
+              catalogHeadingDescription={catalogHeaderContent.descripcion || 'Empezamos con una selección editorial para que la tienda tenga producto realista desde ahora, mientras el catálogo en vivo sigue creciendo.'}
               wishlistIds={wishlistIds}
               onAddToCart={handleAddToCart}
               onBuyNow={handleBuyNow}

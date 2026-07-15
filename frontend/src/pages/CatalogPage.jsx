@@ -2,7 +2,18 @@ import { useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import ProductCatalog from '../components/ProductCatalog.jsx';
 
-function CatalogPage({ catalogProducts, catalogNotice, catalogLoading, wishlistIds, onAddToCart, onBuyNow, onToggleWishlist }) {
+function CatalogPage({
+  catalogProducts,
+  catalogNotice,
+  catalogLoading,
+  catalogHeadingEyebrow,
+  catalogHeadingTitle,
+  catalogHeadingDescription,
+  wishlistIds,
+  onAddToCart,
+  onBuyNow,
+  onToggleWishlist,
+}) {
   const [searchParams] = useSearchParams();
   const tipoParam = searchParams.get('tipo') || 'Todos';
   const tonoParam = searchParams.get('tono') || 'Todos';
@@ -27,6 +38,9 @@ function CatalogPage({ catalogProducts, catalogNotice, catalogLoading, wishlistI
         onToggleWishlist={onToggleWishlist}
         initialCategory={tipoParam}
         initialTone={tonoParam}
+        headingEyebrow={catalogHeadingEyebrow}
+        headingTitle={catalogHeadingTitle}
+        headingDescription={catalogHeadingDescription}
       />
     </main>
   );

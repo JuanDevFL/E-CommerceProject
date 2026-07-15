@@ -4,6 +4,7 @@ import { sendOrderConfirmationEmail } from '../email.js';
 import { validatePasswordPolicy } from '../passwordPolicy.js';
 import { calculateShipping, STORE_CURRENCY, normalizePrice } from '../pricing.js';
 import { logActividad } from '../userSchema.js';
+import { calculateBestDiscount } from '../services/discountService.js';
 
 function clientIp(req) {
   return (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress || null;
@@ -335,8 +336,16 @@ export async function createMyOrder(req, res) {
     }
 
     const subtotal = orderItems.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
-    const shipping = calculateShipping(subtotal);
-    const total = subtotal + shipping;
+    const totalQuantity = orderItems.reduce((sum, item) => sum + item.quantity, 0);
+    const appliedDiscount = await calculateBestDiscount({
+      subtotal,
+      totalQuantity,
+      userId: req.user.id,
+      email: req.user.email,
+    });
+    const discountAmount = Number(appliedDiscount.amount || 0);
+    const shipping = calculateShipping(subtotal - discountAmount);
+    const total = subtotal - discountAmount + shipping;
     const orderState = resolveOrderState(paymentStatus);
     const addressSnapshot = buildAddressSnapshot(addressRows[0]);
 
@@ -345,8 +354,8 @@ export async function createMyOrder(req, res) {
 
     const [result] = await connection.query(
       `INSERT INTO ordenes
-         (usuario_id, cliente_tipo, cliente_nombre, cliente_email, cliente_telefono, subtotal, envio, total, moneda, estado, referencia_pago, payment_provider, payment_method, payment_status, direccion_envio_json)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         (usuario_id, cliente_tipo, cliente_nombre, cliente_email, cliente_telefono, subtotal, envio, descuento_total, descuento_regla_id, descuento_detalle_json, total, moneda, estado, referencia_pago, payment_provider, payment_method, payment_status, direccion_envio_json)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         req.user.id,
         'registered',
@@ -355,6 +364,16 @@ export async function createMyOrder(req, res) {
         addressSnapshot.telefono || null,
         subtotal.toFixed(2),
         shipping.toFixed(2),
+        discountAmount.toFixed(2),
+        appliedDiscount.rule?.id || null,
+        appliedDiscount.rule
+          ? JSON.stringify({
+            id: appliedDiscount.rule.id,
+            nombre: appliedDiscount.rule.nombre,
+            tipo: appliedDiscount.rule.tipo,
+            porcentaje: Number(appliedDiscount.rule.discount_percent || 0),
+          })
+          : null,
         total.toFixed(2),
         STORE_CURRENCY,
         orderState,
@@ -402,6 +421,15 @@ export async function createMyOrder(req, res) {
       id: result.insertId,
       subtotal,
       envio: shipping,
+      descuento_total: discountAmount,
+      descuento_regla: appliedDiscount.rule
+        ? {
+          id: appliedDiscount.rule.id,
+          nombre: appliedDiscount.rule.nombre,
+          tipo: appliedDiscount.rule.tipo,
+          porcentaje: Number(appliedDiscount.rule.discount_percent || 0),
+        }
+        : null,
       total,
       moneda: STORE_CURRENCY,
       estado: orderState,

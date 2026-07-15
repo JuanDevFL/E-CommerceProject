@@ -70,19 +70,11 @@ function HeroCarousel() {
               <div className="carousel-backdrop" style={{ backgroundImage: `url(${slide.src})` }} />
               <div className="carousel-overlay" />
               <div className="carousel-layout">
-                <div className="carousel-copy-column">
-                  <div className="carousel-copy">
-                    <p className="carousel-eyebrow">{slide.eyebrow}</p>
-                    <h2 className="carousel-title">{slide.title}</h2>
-                    <p className="carousel-description">{slide.description}</p>
-                  </div>
-                </div>
-
                 <div className="carousel-visual-column">
                   <div className="carousel-media">
                     <img
                       src={slide.src}
-                      alt={slide.alt}
+                      alt={slide.title || 'Imagen de carrusel'}
                       className="carousel-image"
                       loading="lazy"
                       decoding="async"
@@ -120,9 +112,7 @@ function HeroCarousel() {
           ))}
         </div>
 
-        <p className="carousel-meta">
-          {String(activeIndex + 1).padStart(2, '0')} / {String(slides.length).padStart(2, '0')} · colección editorial Azami
-        </p>
+        <p className="carousel-meta">{String(activeIndex + 1).padStart(2, '0')} / {String(slides.length).padStart(2, '0')}</p>
       </div>
     </section>
   );

@@ -14,7 +14,17 @@ import announcementRoutes from './routes/announcementRoutes.js';
 import productRoutes from './routes/productRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import { getDbRuntimeInfo } from './db.js';
-import { ensureActividadLogsTable, ensureAddressesTable, ensureAnnouncementsTable, ensureOrdersTable, ensurePasswordResetTokensTable, ensureRefreshTokensTable, ensureUsuariosTable } from './userSchema.js';
+import {
+  ensureActividadLogsTable,
+  ensureAddressesTable,
+  ensureAnnouncementsTable,
+  ensureDiscountTables,
+  ensureOrdersTable,
+  ensurePasswordResetTokensTable,
+  ensureProductosTableEnhancements,
+  ensureRefreshTokensTable,
+  ensureUsuariosTable,
+} from './userSchema.js';
 
 dotenv.config();
 
@@ -84,7 +94,9 @@ async function bootstrap() {
       await ensurePasswordResetTokensTable();
       await ensureActividadLogsTable();
       await ensureRefreshTokensTable();
+      await ensureProductosTableEnhancements();
       await ensureOrdersTable();
+      await ensureDiscountTables();
       await ensureAddressesTable();
       await ensureAnnouncementsTable();
     }

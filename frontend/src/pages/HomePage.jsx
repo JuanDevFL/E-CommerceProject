@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import HeroCarousel from '../components/HeroCarousel.jsx';
 import { curatedProducts } from '../data/curatedProducts.js';
-import { formatPrice } from '../utils/pricing.js';
 
 function FeaturedCarousel({ products }) {
   const featured = (products && products.length > 0 ? products : curatedProducts)
@@ -42,27 +41,16 @@ function FeaturedCarousel({ products }) {
       <button type="button" className="featured-carousel-arrow left" onClick={prev} aria-label="Anterior">‹</button>
 
       <div className="featured-carousel-slide" key={product.id}>
-        <img
-          src={product.imagen_url}
-          alt={product.nombre}
-          className="featured-carousel-img"
-          loading="lazy"
-          decoding="async"
-          referrerPolicy="no-referrer"
-        />
-        <div className="featured-carousel-info">
-          {product.etiqueta && <span className="featured-carousel-tag">{product.etiqueta}</span>}
-          <h3 className="featured-carousel-name">{product.nombre}</h3>
-          <p className="featured-carousel-desc">{product.descripcion}</p>
-          <span className="featured-carousel-price">{formatPrice(product.precio)}</span>
-          <button
-            type="button"
-            className="featured-carousel-btn"
-            onClick={() => navigate(`/producto/${product.id}`)}
-          >
-            Ver producto →
-          </button>
-        </div>
+        <button type="button" className="featured-carousel-image-button" onClick={() => navigate(`/producto/${product.id}`)}>
+          <img
+            src={product.imagen_url}
+            alt={product.nombre}
+            className="featured-carousel-img"
+            loading="lazy"
+            decoding="async"
+            referrerPolicy="no-referrer"
+          />
+        </button>
       </div>
 
       <button type="button" className="featured-carousel-arrow right" onClick={next} aria-label="Siguiente">›</button>

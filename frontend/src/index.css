@@ -11,24 +11,24 @@
 :root {
   color-scheme: light;
   --color-background: #ffffff;
-  --color-background-alt: #faf8ff;
-  --color-surface: #f3eeff;
-  --color-surface-alt: #ede9fe;
-  --color-primary: #8b5cf6;
-  --color-primary-dark: #7c3aed;
-  --color-primary-soft: #8b5cf6;
-  --color-heading: #1e0a3c;
-  --color-text: #1e0a3c;
-  --color-muted: #6d28d9;
-  --color-border: #ddd6fe;
-  --color-panel: rgba(250, 248, 255, 0.94);
-  --color-overlay: rgba(30, 10, 60, 0.12);
+  --color-background-alt: #faf6f1;
+  --color-surface: #f3ece3;
+  --color-surface-alt: #e9ddd0;
+  --color-primary: #8b3d4f;
+  --color-primary-dark: #6f2f3e;
+  --color-primary-soft: #b06f7f;
+  --color-heading: #231314;
+  --color-text: #2e1b1c;
+  --color-muted: #704347;
+  --color-border: #dcc9c5;
+  --color-panel: rgba(250, 246, 241, 0.94);
+  --color-overlay: rgba(35, 19, 20, 0.12);
   --button-text: #ffffff;
-  --button-glow: 0 18px 40px rgba(109, 40, 217, 0.16);
-  --button-hover-glow: 0 24px 48px rgba(109, 40, 217, 0.24);
-  --color-hover-ink: #7c3aed;
-  --color-shadow: 0 20px 80px rgba(109, 40, 217, 0.1);
-  --brand-logo-filter: brightness(0) saturate(100%) invert(29%) sepia(72%) saturate(2324%) hue-rotate(245deg) brightness(98%) contrast(96%);
+  --button-glow: 0 18px 40px rgba(111, 47, 62, 0.16);
+  --button-hover-glow: 0 24px 48px rgba(111, 47, 62, 0.24);
+  --color-hover-ink: #6f2f3e;
+  --color-shadow: 0 20px 80px rgba(111, 47, 62, 0.1);
+  --brand-logo-filter: brightness(0) saturate(100%) invert(20%) sepia(11%) saturate(2363%) hue-rotate(304deg) brightness(96%) contrast(87%);
 }
 
 [data-theme='dark'] {
@@ -205,6 +205,29 @@ body {
 .navbar-center-actions {
   margin-left: auto;
   gap: 0.35rem;
+}
+
+.navbar-social-links {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-left: 0.35rem;
+}
+
+.nav-social-btn {
+  width: 2.2rem;
+  height: 2.2rem;
+}
+
+.nav-icon-social {
+  width: 1rem;
+  height: 1rem;
+}
+
+@media (max-width: 1023px) {
+  .navbar-social-links {
+    display: none;
+  }
 }
 
 .navbar-actions {
@@ -438,7 +461,7 @@ body {
   min-height: inherit;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: minmax(16rem, 0.68fr) minmax(0, 1.42fr);
+  grid-template-columns: minmax(0, 1fr);
   align-items: stretch;
   gap: clamp(1rem, 2.8vw, 2.5rem);
   padding: clamp(1rem, 2vw, 1.8rem) clamp(1rem, 3.5vw, 3rem) clamp(3.5rem, 6vw, 4.5rem);
@@ -471,6 +494,7 @@ body {
 .carousel-visual-column {
   display: flex;
   align-items: center;
+  justify-content: center;
 }
 
 .carousel-image {
@@ -977,6 +1001,54 @@ body {
   transition: transform 320ms ease;
 }
 
+.product-card-carousel-control {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2rem;
+  height: 2rem;
+  border: 0;
+  border-radius: 9999px;
+  background: rgba(0, 0, 0, 0.35);
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.product-card-carousel-control.is-prev {
+  left: 0.6rem;
+}
+
+.product-card-carousel-control.is-next {
+  right: 0.6rem;
+}
+
+.product-card-carousel-dots {
+  position: absolute;
+  left: 50%;
+  bottom: 0.6rem;
+  transform: translateX(-50%);
+  display: inline-flex;
+  gap: 0.4rem;
+  z-index: 2;
+}
+
+.product-card-carousel-dot {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 9999px;
+  border: 0;
+  background: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+}
+
+.product-card-carousel-dot.is-active {
+  background: #ffffff;
+}
+
 .product-card:hover .product-card-image,
 .product-card:focus-within .product-card-image {
   transform: scale(1.01);
@@ -1053,6 +1125,28 @@ body {
   margin: 0;
   color: var(--color-muted);
   line-height: 1.65;
+}
+
+.product-card-colors {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.product-card-color-dot {
+  width: 0.92rem;
+  height: 0.92rem;
+  border-radius: 9999px;
+  border: 1px solid color-mix(in srgb, var(--color-border) 76%, transparent 24%);
+  background: var(--dot-color, #d4d4d8);
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+}
+
+.product-card-color-dot.is-active {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 
 .product-card-footer {
@@ -1135,6 +1229,15 @@ body {
   align-items: center;
   text-align: center;
   animation: featuredFadeIn 0.4s ease;
+}
+
+.featured-carousel-image-button {
+  display: block;
+  width: 100%;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
 }
 
 @keyframes featuredFadeIn {
@@ -1305,7 +1408,7 @@ body {
   margin: 0;
   padding: 1.2rem clamp(1rem, 2vw, 3rem);
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 0.75rem 1.5rem;
   color: #aeb6c3;
@@ -1325,8 +1428,8 @@ body {
   flex-wrap: wrap;
   gap: 0.5rem 1.35rem;
   grid-column: 2;
-  justify-content: center;
-  justify-self: center;
+  justify-content: flex-end;
+  justify-self: end;
 }
 
 .site-footer-link {
@@ -2939,6 +3042,35 @@ body::-webkit-scrollbar-thumb {
   border-radius: 1.25rem;
 }
 
+.product-detail-thumbs {
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.product-detail-thumb {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 0.6rem;
+  border: 1px solid color-mix(in srgb, var(--color-border) 75%, transparent 25%);
+  padding: 0;
+  overflow: hidden;
+  background: var(--color-background);
+  cursor: pointer;
+}
+
+.product-detail-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.product-detail-thumb.is-active {
+  border-color: var(--color-primary);
+}
+
 .product-detail-badges {
   position: absolute;
   top: 1rem;
@@ -2960,6 +3092,21 @@ body::-webkit-scrollbar-thumb {
   text-transform: uppercase;
   letter-spacing: 0.12em;
   color: var(--color-muted);
+}
+
+.product-detail-color-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.product-detail-color-pill {
+  border: 1px solid var(--color-border);
+  border-radius: 9999px;
+  padding: 0.3rem 0.8rem;
+  background: color-mix(in srgb, var(--color-background-alt) 82%, #ffffff 18%);
+  color: var(--color-text);
+  cursor: pointer;
 }
 
 .product-detail-title {

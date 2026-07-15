@@ -1,4 +1,5 @@
 import { useParams, Link } from 'react-router-dom';
+import { useMemo, useState } from 'react';
 import { formatPrice } from '../utils/pricing.js';
 import { translateCategoryLabel, translateProductTagLabel } from '../utils/catalogLabels.js';
 
@@ -37,6 +38,20 @@ function ProductDetailPage({ products, productsLoading = false, wishlistIds = []
   }
 
   const isFav = wishlistIds.includes(product.id);
+  const imageGallery = useMemo(() => {
+    const images = Array.isArray(product.image_urls) ? product.image_urls : [];
+    const unique = [...new Set([product.imagen_url, ...images].filter(Boolean))];
+    return unique.length > 0 ? unique : [product.imagen_url].filter(Boolean);
+  }, [product]);
+
+  const colorVariants = Array.isArray(product.color_variants) && product.color_variants.length > 0
+    ? product.color_variants
+    : [{ nombre: product.tono || 'Base', imagen_url: product.imagen_url, hex: '' }];
+
+  const [selectedImage, setSelectedImage] = useState(imageGallery[0]);
+
+  const selectedTone = colorVariants.find((variant) => variant.imagen_url === selectedImage)?.nombre
+    || product.tono;
 
   return (
     <main className="product-detail-page">
@@ -51,13 +66,28 @@ function ProductDetailPage({ products, productsLoading = false, wishlistIds = []
       <div className="product-detail-grid">
         <div className="product-detail-media">
           <img
-            src={product.imagen_url}
+            src={selectedImage || product.imagen_url}
             alt={product.nombre}
             className="product-detail-image"
             loading="eager"
             decoding="async"
             referrerPolicy="no-referrer"
           />
+          {imageGallery.length > 1 && (
+            <div className="product-detail-thumbs">
+              {imageGallery.map((image, index) => (
+                <button
+                  key={`${product.id}-${image}-${index}`}
+                  type="button"
+                  className={`product-detail-thumb ${image === selectedImage ? 'is-active' : ''}`}
+                  onClick={() => setSelectedImage(image)}
+                  aria-label={`Ver imagen ${index + 1}`}
+                >
+                  <img src={image} alt={`Miniatura ${index + 1} de ${product.nombre}`} loading="lazy" referrerPolicy="no-referrer" />
+                </button>
+              ))}
+            </div>
+          )}
           <div className="product-detail-badges">
             <span className="product-badge product-badge-primary">{translateProductTagLabel(product.etiqueta)}</span>
             <span className="product-badge">{translateCategoryLabel(product.categoria)}</span>
@@ -67,8 +97,23 @@ function ProductDetailPage({ products, productsLoading = false, wishlistIds = []
         <div className="product-detail-info">
           <div className="product-detail-meta">
             <span>{product.material}</span>
-            <span>{product.tono}</span>
+            <span>{selectedTone}</span>
           </div>
+
+          {colorVariants.length > 0 && (
+            <div className="product-detail-color-row">
+              {colorVariants.map((variant, index) => (
+                <button
+                  key={`${product.id}-${variant.nombre}-${index}`}
+                  type="button"
+                  className="product-detail-color-pill"
+                  onClick={() => setSelectedImage(variant.imagen_url || imageGallery[0])}
+                >
+                  {variant.nombre}
+                </button>
+              ))}
+            </div>
+          )}
 
           <h1 className="product-detail-title">{product.nombre}</h1>
           <p className="product-detail-price">{formatPrice(product.precio)}</p>

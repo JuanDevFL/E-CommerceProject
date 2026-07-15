@@ -20,6 +20,9 @@ import {
   addAdminCmsSlide,
   updateAdminCmsSlide,
   deleteAdminCmsSlide,
+  fetchAdminDiscountRules,
+  createAdminDiscountRule,
+  updateAdminDiscountRule,
 } from '../api.js';
 import { formatPrice as formatCurrency, normalizePrice } from '../utils/pricing.js';
 import './AdminDashboardPage.css';
@@ -29,6 +32,9 @@ const initialProductForm = {
   descripcion: '',
   precio: '',
   imagen_url: '',
+  imagen_url_2: '',
+  imagen_url_3: '',
+  color_variants_text: '',
   stock: '0',
   categoria: '',
   tono: '',
@@ -108,6 +114,21 @@ const SHIPMENT_STATES = [
   { id: 'entregado', label: 'Entregado' },
 ];
 
+const CMS_CONTENT_HELP = {
+  'home.hero_titulo': 'Inicio: Título principal del hero',
+  'home.hero_tagline': 'Inicio: Línea corta bajo el título principal',
+  'home.hero_subtitulo': 'Inicio: Párrafo descriptivo del hero',
+  'home.hero_cta': 'Inicio: Texto del botón principal',
+  'catalogo.eyebrow': 'Catálogo: Etiqueta superior de la sección',
+  'catalogo.titulo': 'Catálogo: Título principal del catálogo',
+  'catalogo.descripcion': 'Catálogo: Descripción introductoria de la sección',
+  'about.titulo': 'Nosotros: Título principal',
+  'about.subtitulo': 'Nosotros: Subtítulo principal',
+  'about.descripcion': 'Nosotros: Descripción principal',
+  'contacto.email': 'Contacto: Correo de atención',
+  'contacto.whatsapp': 'Contacto: Número de WhatsApp',
+};
+
 function formatAddress(address) {
   if (!address) {
     return null;
@@ -142,16 +163,89 @@ function getOrderStatusLabel(status) {
     pago_confirmado: 'Pago confirmado',
     enviado: 'Enviado',
     entregado: 'Entregado',
-    cancelado: 'Cancelado',
+    cancelado: 'Pago cancelado',
   };
 
   return labels[normalized] || String(status || 'Sin estado');
+}
+
+function buildImageUrlsFromForm(form) {
+  const urls = [form.imagen_url, form.imagen_url_2, form.imagen_url_3]
+    .map((value) => String(value || '').trim())
+    .filter(Boolean);
+
+  const unique = [...new Set(urls)].slice(0, 3);
+  if (!unique.length) return [];
+  while (unique.length < 3) {
+    unique.push(unique[unique.length - 1]);
+  }
+  return unique;
+}
+
+function parseColorVariantsText(rawText, fallbackImage, fallbackTone) {
+  const lines = String(rawText || '')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const parsed = lines
+    .map((line) => {
+      const [nombre, hex, imagen] = line.split('|').map((part) => String(part || '').trim());
+      if (!nombre) return null;
+      return {
+        nombre,
+        hex: hex || '',
+        imagen_url: imagen || fallbackImage || '',
+      };
+    })
+    .filter(Boolean);
+
+  if (parsed.length > 0) {
+    return parsed;
+  }
+
+  if (fallbackTone || fallbackImage) {
+    return [{
+      nombre: fallbackTone || 'Base',
+      hex: '',
+      imagen_url: fallbackImage || '',
+    }];
+  }
+
+  return [];
+}
+
+function variantsToText(variants) {
+  if (!Array.isArray(variants) || variants.length === 0) return '';
+  return variants
+    .map((variant) => {
+      const nombre = String(variant.nombre || '').trim();
+      const hex = String(variant.hex || '').trim();
+      const imagen = String(variant.imagen_url || '').trim();
+      if (!nombre) return null;
+      return [nombre, hex, imagen].join('|');
+    })
+    .filter(Boolean)
+    .join('\n');
+}
+
+function parseJsonArray(value) {
+  if (Array.isArray(value)) return value;
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
 }
 
 function AdminDashboardPage({ user, onProductCreated }) {
   const offlineSalesInputRef = useRef(null);
   const createImageInputRef = useRef(null);
   const editImageInputRef = useRef(null);
+  const createAnnouncementImageInputRef = useRef(null);
+  const editAnnouncementImageInputRefs = useRef({});
   const [dashboard, setDashboard] = useState(null);
   const [roleDrafts, setRoleDrafts] = useState({});
   const [productForm, setProductForm] = useState(initialProductForm);
@@ -194,6 +288,18 @@ function AdminDashboardPage({ user, onProductCreated }) {
   const [shipmentStatusFilter, setShipmentStatusFilter] = useState('all');
   const [shipmentPage, setShipmentPage] = useState(0);
   const [hoveredTimelineDay, setHoveredTimelineDay] = useState(null);
+  const [discountRules, setDiscountRules] = useState([]);
+  const [discountForm, setDiscountForm] = useState({
+    nombre: '',
+    tipo: 'quantity',
+    min_order_value: '0',
+    min_quantity: '2',
+    discount_percent: '10',
+    max_uses_per_user: '',
+    activo: true,
+    prioridad: '100',
+  });
+  const [savingDiscountId, setSavingDiscountId] = useState(null);
 
   const [orderSearch, setOrderSearch] = useState('');
   const [orderStatusFilter, setOrderStatusFilter] = useState('all');
@@ -232,8 +338,8 @@ function AdminDashboardPage({ user, onProductCreated }) {
   useEffect(() => {
     if (activeTab !== 'contenido' || cmsFilters !== null) return;
     setCmsLoading(true);
-    Promise.all([fetchAdminCmsFilters(), fetchAdminCmsContent(), fetchAdminCmsCarousel()])
-      .then(([filters, content, carousel]) => {
+    Promise.all([fetchAdminCmsFilters(), fetchAdminCmsContent(), fetchAdminCmsCarousel(), fetchAdminDiscountRules()])
+      .then(([filters, content, carousel, rulesResponse]) => {
         setCmsFilters(filters);
         setCmsContent(content);
         const edits = {};
@@ -244,6 +350,7 @@ function AdminDashboardPage({ user, onProductCreated }) {
         }
         setCmsContentEdits(edits);
         setCmsCarousel(carousel);
+        setDiscountRules(Array.isArray(rulesResponse?.rules) ? rulesResponse.rules : []);
       })
       .catch(() => setActionError('No se pudo cargar el contenido CMS.'))
       .finally(() => setCmsLoading(false));
@@ -277,8 +384,12 @@ function AdminDashboardPage({ user, onProductCreated }) {
     setSuccessMessage('');
 
     try {
+      const imageUrls = buildImageUrlsFromForm(productForm);
       const payload = {
         ...productForm,
+        imagen_url: imageUrls[0] || productForm.imagen_url,
+        image_urls: imageUrls,
+        color_variants: parseColorVariantsText(productForm.color_variants_text, imageUrls[0], productForm.tono),
         precio: Number(productForm.precio),
         stock: Number(productForm.stock || 0),
       };
@@ -296,12 +407,17 @@ function AdminDashboardPage({ user, onProductCreated }) {
   };
 
   const handleEditClick = (product) => {
+    const imageUrls = parseJsonArray(product.image_urls);
+    const colorVariants = parseJsonArray(product.color_variants_json);
     setEditingProduct(product);
     setEditForm({
       nombre: product.nombre || '',
       descripcion: product.descripcion || '',
       precio: String(normalizePrice(product.precio) || ''),
       imagen_url: product.imagen_url || '',
+      imagen_url_2: imageUrls[1] || '',
+      imagen_url_3: imageUrls[2] || '',
+      color_variants_text: variantsToText(colorVariants),
       stock: String(product.stock || '0'),
       categoria: product.categoria || '',
       tono: product.tono || '',
@@ -352,8 +468,12 @@ function AdminDashboardPage({ user, onProductCreated }) {
     setSuccessMessage('');
 
     try {
+      const imageUrls = buildImageUrlsFromForm(editForm);
       const payload = {
         ...editForm,
+        imagen_url: imageUrls[0] || editForm.imagen_url,
+        image_urls: imageUrls,
+        color_variants: parseColorVariantsText(editForm.color_variants_text, imageUrls[0], editForm.tono),
         precio: Number(editForm.precio),
         stock: Number(editForm.stock || 0),
       };
@@ -424,6 +544,37 @@ function AdminDashboardPage({ user, onProductCreated }) {
     }
   };
 
+  const handleCreateAnnouncementImageFile = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setActionError('');
+    try {
+      const { url } = await uploadProductImage(file);
+      setAnnouncementForm((current) => ({ ...current, imagen_url: url }));
+    } catch (error) {
+      setActionError(error.message || 'No se pudo subir la imagen del anuncio.');
+    }
+  };
+
+  const handleEditAnnouncementImageFile = async (announcementId, event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setActionError('');
+    try {
+      const { url } = await uploadProductImage(file);
+      setAnnouncementDrafts((current) => ({
+        ...current,
+        [announcementId]: {
+          ...(current[announcementId] || {}),
+          imagen_url: url,
+          estado: current[announcementId]?.estado || 'activo',
+        },
+      }));
+    } catch (error) {
+      setActionError(error.message || 'No se pudo subir la imagen del anuncio.');
+    }
+  };
+
   const handleCreateAnnouncement = async (event) => {
     event.preventDefault();
     setIsCreatingAnnouncement(true);
@@ -470,6 +621,56 @@ function AdminDashboardPage({ user, onProductCreated }) {
       setActionError(error.message || 'No se pudo actualizar el anuncio.');
     } finally {
       setSavingAnnouncementId(null);
+    }
+  };
+
+  const handleCreateDiscountRule = async () => {
+    setActionError('');
+    try {
+      const created = await createAdminDiscountRule({
+        ...discountForm,
+        min_order_value: Number(discountForm.min_order_value || 0),
+        min_quantity: Number(discountForm.min_quantity || 0),
+        discount_percent: Number(discountForm.discount_percent || 0),
+        max_uses_per_user: discountForm.max_uses_per_user ? Number(discountForm.max_uses_per_user) : null,
+        prioridad: Number(discountForm.prioridad || 100),
+      });
+      setDiscountRules((prev) => [...prev, created]);
+      setSuccessMessage('Descuento creado correctamente.');
+      setDiscountForm({
+        nombre: '',
+        tipo: 'quantity',
+        min_order_value: '0',
+        min_quantity: '2',
+        discount_percent: '10',
+        max_uses_per_user: '',
+        activo: true,
+        prioridad: '100',
+      });
+    } catch (error) {
+      setActionError(error.message || 'No se pudo crear la regla de descuento.');
+    }
+  };
+
+  const handleSaveDiscountRule = async (rule) => {
+    setSavingDiscountId(rule.id);
+    setActionError('');
+    try {
+      const updated = await updateAdminDiscountRule(rule.id, {
+        ...rule,
+        min_order_value: Number(rule.min_order_value || 0),
+        min_quantity: Number(rule.min_quantity || 0),
+        discount_percent: Number(rule.discount_percent || 0),
+        max_uses_per_user: rule.max_uses_per_user ? Number(rule.max_uses_per_user) : null,
+        prioridad: Number(rule.prioridad || 100),
+        activo: rule.activo,
+      });
+      setDiscountRules((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
+      setSuccessMessage(`Descuento #${rule.id} actualizado.`);
+    } catch (error) {
+      setActionError(error.message || 'No se pudo actualizar el descuento.');
+    } finally {
+      setSavingDiscountId(null);
     }
   };
 
@@ -1157,7 +1358,7 @@ function AdminDashboardPage({ user, onProductCreated }) {
                   <option value="all">Todos los estados</option>
                   <option value="pendiente">Pendiente</option>
                   <option value="pago_confirmado">Pago confirmado</option>
-                  <option value="cancelado">Cancelado</option>
+                  <option value="cancelado">Pago cancelado</option>
                   <option value="enviado">Enviado</option>
                   <option value="entregado">Entregado</option>
                 </select>
@@ -1376,9 +1577,36 @@ function AdminDashboardPage({ user, onProductCreated }) {
                             placeholder="O pega una URL directamente"
                             className="admin-image-url-input"
                           />
+                          <input
+                            type="url"
+                            name="imagen_url_2"
+                            value={productForm.imagen_url_2}
+                            onChange={handleProductFieldChange}
+                            placeholder="URL imagen #2"
+                            className="admin-image-url-input"
+                          />
+                          <input
+                            type="url"
+                            name="imagen_url_3"
+                            value={productForm.imagen_url_3}
+                            onChange={handleProductFieldChange}
+                            placeholder="URL imagen #3"
+                            className="admin-image-url-input"
+                          />
                         </div>
                       </div>
                     </div>
+
+                    <label className="admin-field admin-field-wide">
+                      <span>Variantes de color (una por línea: Color|#HEX|URL imagen)</span>
+                      <textarea
+                        name="color_variants_text"
+                        value={productForm.color_variants_text}
+                        onChange={handleProductFieldChange}
+                        placeholder={"Ej: Negro|#121212|https://...\nMarfil|#F6F0E6|https://..."}
+                        rows="4"
+                      />
+                    </label>
                   </div>
 
                   <button type="submit" className="admin-primary-button" disabled={isCreatingProduct}>
@@ -1673,6 +1901,22 @@ function AdminDashboardPage({ user, onProductCreated }) {
                     <div className="admin-form-grid">
                       <label className="admin-field admin-field-wide">
                         <span>Imagen URL</span>
+                        <div className="admin-image-uploader-controls" style={{ marginBottom: '0.55rem' }}>
+                          <input
+                            ref={createAnnouncementImageInputRef}
+                            type="file"
+                            accept="image/*"
+                            style={{ display: 'none' }}
+                            onChange={handleCreateAnnouncementImageFile}
+                          />
+                          <button
+                            type="button"
+                            className="admin-secondary-button"
+                            onClick={() => createAnnouncementImageInputRef.current?.click()}
+                          >
+                            Subir imagen
+                          </button>
+                        </div>
                         <input
                           type="url"
                           value={announcementForm.imagen_url}
@@ -1732,6 +1976,22 @@ function AdminDashboardPage({ user, onProductCreated }) {
                           <div className="admin-announcement-controls">
                             <label className="admin-field admin-field-wide">
                               <span>Imagen URL</span>
+                              <div className="admin-image-uploader-controls" style={{ marginBottom: '0.55rem' }}>
+                                <input
+                                  ref={(element) => { editAnnouncementImageInputRefs.current[item.id] = element; }}
+                                  type="file"
+                                  accept="image/*"
+                                  style={{ display: 'none' }}
+                                  onChange={(event) => handleEditAnnouncementImageFile(item.id, event)}
+                                />
+                                <button
+                                  type="button"
+                                  className="admin-secondary-button"
+                                  onClick={() => editAnnouncementImageInputRefs.current[item.id]?.click()}
+                                >
+                                  Subir imagen
+                                </button>
+                              </div>
                               <input
                                 type="url"
                                 value={draft.imagen_url}
@@ -1964,9 +2224,34 @@ function AdminDashboardPage({ user, onProductCreated }) {
                           placeholder="O pega una URL directamente"
                           className="admin-image-url-input"
                         />
+                        <input
+                          type="url"
+                          name="imagen_url_2"
+                          value={editForm.imagen_url_2}
+                          onChange={handleEditFieldChange}
+                          placeholder="URL imagen #2"
+                          className="admin-image-url-input"
+                        />
+                        <input
+                          type="url"
+                          name="imagen_url_3"
+                          value={editForm.imagen_url_3}
+                          onChange={handleEditFieldChange}
+                          placeholder="URL imagen #3"
+                          className="admin-image-url-input"
+                        />
                       </div>
                     </div>
                   </div>
+                  <label className="admin-field admin-field-wide">
+                    <span>Variantes de color (una por línea: Color|#HEX|URL imagen)</span>
+                    <textarea
+                      name="color_variants_text"
+                      value={editForm.color_variants_text}
+                      onChange={handleEditFieldChange}
+                      rows="4"
+                    />
+                  </label>
                 </div>
                 <div className="admin-modal-actions">
                   <button type="button" className="admin-secondary-button" onClick={() => setEditingProduct(null)}>Cancelar</button>
@@ -2054,6 +2339,9 @@ function AdminDashboardPage({ user, onProductCreated }) {
                         {Object.entries(cmsContentEdits).map(([key, val]) => (
                           <label key={key} className="admin-field">
                             <span className="admin-cms-content-key">{key.replace('.', ' → ')}</span>
+                            <small className="text-muted" style={{ marginTop: '-0.2rem' }}>
+                              {CMS_CONTENT_HELP[key] || 'Campo de contenido configurable desde el CMS.'}
+                            </small>
                             <textarea
                               className="admin-input"
                               rows={val.length > 80 ? 3 : 1}
@@ -2117,6 +2405,59 @@ function AdminDashboardPage({ user, onProductCreated }) {
                           <input className="admin-input" placeholder="URL de imagen*" value={cmsNewSlide.imagen_url} onChange={(e) => setCmsNewSlide((s) => ({ ...s, imagen_url: e.target.value }))} />
                           <button type="button" className="btn-primary text-sm px-5 py-2.5 rounded-full" onClick={handleAddSlide}>+ Añadir slide</button>
                         </div>
+                      </div>
+                    </div>
+
+                    <div className="admin-cms-block">
+                      <h3 className="admin-cms-subtitle">Descuentos automáticos</h3>
+                      <p className="admin-cms-label" style={{ textTransform: 'none', letterSpacing: 'normal' }}>
+                        Crea reglas por usuario nuevo o por cantidad de pedido. Puedes encender/apagar cada regla cuando quieras.
+                      </p>
+
+                      <div className="admin-cms-slide-edit">
+                        <input className="admin-input" placeholder="Nombre del descuento" value={discountForm.nombre} onChange={(e) => setDiscountForm((prev) => ({ ...prev, nombre: e.target.value }))} />
+                        <select className="admin-input" value={discountForm.tipo} onChange={(e) => setDiscountForm((prev) => ({ ...prev, tipo: e.target.value }))}>
+                          <option value="new_user">Nuevo usuario (uso único)</option>
+                          <option value="quantity">Por cantidad de pedido</option>
+                        </select>
+                        <input className="admin-input" type="number" min="0" placeholder="Monto mínimo del pedido" value={discountForm.min_order_value} onChange={(e) => setDiscountForm((prev) => ({ ...prev, min_order_value: e.target.value }))} />
+                        <input className="admin-input" type="number" min="0" placeholder="Cantidad mínima de productos" value={discountForm.min_quantity} onChange={(e) => setDiscountForm((prev) => ({ ...prev, min_quantity: e.target.value }))} />
+                        <input className="admin-input" type="number" min="1" max="90" placeholder="% descuento" value={discountForm.discount_percent} onChange={(e) => setDiscountForm((prev) => ({ ...prev, discount_percent: e.target.value }))} />
+                        <input className="admin-input" type="number" min="1" placeholder="Máx. usos por usuario (vacío = sin límite)" value={discountForm.max_uses_per_user} onChange={(e) => setDiscountForm((prev) => ({ ...prev, max_uses_per_user: e.target.value }))} />
+                        <label className="admin-field" style={{ marginTop: '-0.2rem' }}>
+                          <span>Activo</span>
+                          <select className="admin-input" value={discountForm.activo ? 'true' : 'false'} onChange={(e) => setDiscountForm((prev) => ({ ...prev, activo: e.target.value === 'true' }))}>
+                            <option value="true">Encendido</option>
+                            <option value="false">Apagado</option>
+                          </select>
+                        </label>
+                        <button type="button" className="btn-primary text-sm px-5 py-2.5 rounded-full" onClick={handleCreateDiscountRule}>+ Añadir descuento</button>
+                      </div>
+
+                      <div className="admin-cms-content-grid" style={{ marginTop: '0.8rem' }}>
+                        {discountRules.map((rule) => (
+                          <div key={rule.id} className="admin-cms-slide-row" style={{ gridTemplateColumns: '1fr' }}>
+                            <div className="admin-cms-slide-edit">
+                              <input className="admin-input" value={rule.nombre} onChange={(e) => setDiscountRules((prev) => prev.map((item) => (item.id === rule.id ? { ...item, nombre: e.target.value } : item)))} />
+                              <div className="admin-cms-slide-btns">
+                                <select className="admin-input" value={rule.tipo} onChange={(e) => setDiscountRules((prev) => prev.map((item) => (item.id === rule.id ? { ...item, tipo: e.target.value } : item)))}>
+                                  <option value="new_user">Nuevo usuario</option>
+                                  <option value="quantity">Por cantidad</option>
+                                </select>
+                                <input className="admin-input" type="number" min="0" value={rule.min_order_value} onChange={(e) => setDiscountRules((prev) => prev.map((item) => (item.id === rule.id ? { ...item, min_order_value: e.target.value } : item)))} />
+                                <input className="admin-input" type="number" min="0" value={rule.min_quantity} onChange={(e) => setDiscountRules((prev) => prev.map((item) => (item.id === rule.id ? { ...item, min_quantity: e.target.value } : item)))} />
+                                <input className="admin-input" type="number" min="1" max="90" value={rule.discount_percent} onChange={(e) => setDiscountRules((prev) => prev.map((item) => (item.id === rule.id ? { ...item, discount_percent: e.target.value } : item)))} />
+                                <select className="admin-input" value={rule.activo ? 'true' : 'false'} onChange={(e) => setDiscountRules((prev) => prev.map((item) => (item.id === rule.id ? { ...item, activo: e.target.value === 'true' } : item)))}>
+                                  <option value="true">Encendido</option>
+                                  <option value="false">Apagado</option>
+                                </select>
+                              </div>
+                              <button type="button" className="btn-secondary text-sm px-4 py-1.5 rounded-full" onClick={() => handleSaveDiscountRule(rule)} disabled={savingDiscountId === rule.id}>
+                                {savingDiscountId === rule.id ? 'Guardando...' : 'Guardar regla'}
+                              </button>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   </>

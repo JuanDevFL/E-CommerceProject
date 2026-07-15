@@ -1,5 +1,22 @@
 import pool from '../db.js';
 
+async function ensureDefaultSiteContent() {
+  const defaults = [
+    ['catalogo', 'eyebrow', 'Selección Azami'],
+    ['catalogo', 'titulo', 'Catálogo curado con filtros por estilo y tono'],
+    ['catalogo', 'descripcion', 'Empezamos con una selección editorial para que la tienda tenga producto realista desde ahora, mientras el catálogo en vivo sigue creciendo.'],
+  ];
+
+  for (const [seccion, clave, valor] of defaults) {
+    await pool.query(
+      `INSERT INTO site_content (seccion, clave, valor)
+       VALUES (?, ?, ?)
+       ON DUPLICATE KEY UPDATE valor = valor`,
+      [seccion, clave, valor]
+    );
+  }
+}
+
 // ─── PUBLIC (sin auth) ────────────────────────────────────────────────────────
 
 export async function getPublicFilters(req, res) {
@@ -17,6 +34,7 @@ export async function getPublicFilters(req, res) {
 
 export async function getPublicContent(req, res) {
   try {
+    await ensureDefaultSiteContent();
     const [rows] = await pool.query(`SELECT seccion, clave, valor FROM site_content`);
     const content = {};
     for (const row of rows) {
@@ -91,6 +109,7 @@ export async function deleteFilter(req, res) {
 // ── Site content ──────────────────────────────────────────────────────────────
 
 export async function getAdminContent(req, res) {
+  await ensureDefaultSiteContent();
   const [rows] = await pool.query(`SELECT id, seccion, clave, valor, actualizado_at FROM site_content ORDER BY seccion, clave`);
   const content = {};
   for (const row of rows) {

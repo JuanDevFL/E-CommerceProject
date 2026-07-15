@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import logoNavBar from '../assets/LogoNavBar.svg';
 import { formatPrice } from '../utils/pricing.js';
+import { fetchCmsFilters } from '../api.js';
 
 function Icon({ type, className = 'nav-icon' }) {
   const commonProps = {
@@ -93,6 +94,26 @@ function Icon({ type, className = 'nav-icon' }) {
           <rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.8" />
         </svg>
       );
+    case 'instagram':
+      return (
+        <svg {...commonProps}>
+          <rect x="3" y="3" width="18" height="18" rx="5" stroke="currentColor" strokeWidth="1.8" />
+          <circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="1.8" />
+          <circle cx="17.2" cy="6.8" r="1.1" fill="currentColor" />
+        </svg>
+      );
+    case 'tiktok':
+      return (
+        <svg {...commonProps}>
+          <path d="M14.75 4C15 5.8 16.3 7.1 18 7.35V10C16.75 9.95 15.54 9.57 14.5 8.92V14.45C14.5 17.08 12.38 19.2 9.75 19.2C7.12 19.2 5 17.08 5 14.45C5 11.82 7.12 9.7 9.75 9.7C10.15 9.7 10.54 9.75 10.9 9.87V12.45C10.56 12.24 10.16 12.12 9.75 12.12C8.45 12.12 7.42 13.15 7.42 14.45C7.42 15.75 8.45 16.78 9.75 16.78C11.05 16.78 12.08 15.75 12.08 14.45V4H14.75Z" fill="currentColor" />
+        </svg>
+      );
+    case 'whatsapp':
+      return (
+        <svg {...commonProps}>
+          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" fill="currentColor" /><path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.978-1.413A9.953 9.953 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18a7.95 7.95 0 01-4.079-1.125l-.29-.173-3.004.853.853-3.004-.198-.298A7.95 7.95 0 014 12c0-4.411 3.589-8 8-8s8 3.589 8 8-3.589 8-8 8z" fill="currentColor" />
+        </svg>
+      );
     default:
       return null;
   }
@@ -118,8 +139,19 @@ function Navbar({
   const [isUserPanelOpen, setIsUserPanelOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [activeSubmenu, setActiveSubmenu] = useState('');
+  const [cmsCategories, setCmsCategories] = useState([]);
   const isAdmin = user?.role === 'admin';
   const isAdminPage = location.pathname.startsWith('/admin');
+
+  useEffect(() => {
+    fetchCmsFilters()
+      .then((data) => {
+        if (Array.isArray(data?.categorias) && data.categorias.length > 0) {
+          setCmsCategories(data.categorias.slice(0, 8));
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const closeMenu = () => {
     setIsOpen(false);
@@ -139,11 +171,18 @@ function Navbar({
     {
       label: 'Colecciones',
       subOptions: [
-        { label: 'Carteras',       route: '/catalogo?tipo=Carteras' },
-        { label: 'Mini morrales',  route: '/catalogo?tipo=Mini morrales' },
-        { label: 'Bandoleras',     route: '/catalogo?tipo=Bandoleras' },
-        { label: 'Cross Body',     route: '/catalogo?tipo=Cross Body' },
-        { label: 'Todos',          route: '/catalogo' },
+        ...(cmsCategories.length > 0
+          ? cmsCategories.map((category) => ({
+              label: category,
+              route: `/catalogo?tipo=${encodeURIComponent(category)}`,
+            }))
+          : [
+              { label: 'Carteras', route: '/catalogo?tipo=Carteras' },
+              { label: 'Mini morrales', route: '/catalogo?tipo=Mini morrales' },
+              { label: 'Bandoleras', route: '/catalogo?tipo=Bandoleras' },
+              { label: 'Cross Body', route: '/catalogo?tipo=Cross Body' },
+            ]),
+        { label: 'Todos', route: '/catalogo' },
       ],
     },
     {
@@ -162,6 +201,12 @@ function Navbar({
         { label: 'Postventa', route: '/nosotros' }
       ]
     }
+  ];
+
+  const socialLinks = [
+    { label: 'Instagram', icon: 'instagram', href: 'https://www.instagram.com/azami.oficial?igsh=MTFyZGkxMm1oaWhxaQ%3D%3D&utm_source=qr' },
+    { label: 'TikTok', icon: 'tiktok', href: 'https://www.tiktok.com/@azamibags?_r=1&_t=ZS-97mmOSAcPRg' },
+    { label: 'WhatsApp', icon: 'whatsapp', href: 'https://wa.me/message/CEF4F3BBVGJJK1' },
   ];
 
   return (
@@ -339,6 +384,21 @@ function Navbar({
             <span className="nav-icon-tooltip">Inicio</span>
           </button>
         )}
+
+        <div className="navbar-social-links" aria-label="Redes sociales de Azami">
+          {socialLinks.map((social) => (
+            <a
+              key={social.label}
+              href={social.href}
+              target="_blank"
+              rel="noreferrer"
+              className="nav-icon-btn nav-social-btn"
+              aria-label={social.label}
+            >
+              <Icon type={social.icon} className="nav-icon nav-icon-social" />
+            </a>
+          ))}
+        </div>
       </div>
 
       <div className="navbar-mobile-actions flex min-w-0 shrink-0 items-center gap-1.5 lg:hidden">

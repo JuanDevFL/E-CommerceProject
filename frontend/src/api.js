@@ -126,6 +126,13 @@ export async function createGuestOrder(payload) {
   });
 }
 
+export async function fetchCheckoutQuote(payload) {
+  return request('/checkout/quote', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function fetchWompiWidgetConfig(payload) {
   return request('/checkout/wompi/widget', {
     method: 'POST',
@@ -204,6 +211,26 @@ export async function updateAdminCmsSlide(id, payload) {
 }
 export async function deleteAdminCmsSlide(id) {
   return request(`/admin/cms/carousel/${id}`, { method: 'DELETE', auth: true });
+}
+
+export async function fetchAdminDiscountRules() {
+  return request('/admin/discount-rules', { method: 'GET', auth: true });
+}
+
+export async function createAdminDiscountRule(payload) {
+  return request('/admin/discount-rules', {
+    method: 'POST',
+    auth: true,
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateAdminDiscountRule(ruleId, payload) {
+  return request(`/admin/discount-rules/${ruleId}`, {
+    method: 'PUT',
+    auth: true,
+    body: JSON.stringify(payload),
+  });
 }
 
 export async function createAdminProducto(payload) {

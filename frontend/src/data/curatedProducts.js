@@ -366,33 +366,120 @@ const curatedProductBase = [
 
 export const curatedProducts = curatedProductBase
   .slice(0, currentProductNames.length)
-  .map((product, index) => ({
-    ...product,
-    nombre: currentProductNames[index],
-    backendId: null,
-    precio: normalizePrice(product.precio),
-  }));
+  .map((product, index) => {
+    const image_urls = [
+      product.imagen_url,
+      curatedFallbackImages[(index + 5) % curatedFallbackImages.length],
+      curatedFallbackImages[(index + 11) % curatedFallbackImages.length],
+    ];
+
+    return {
+      ...product,
+      nombre: currentProductNames[index],
+      backendId: null,
+      precio: normalizePrice(product.precio),
+      image_urls,
+      color_variants: [
+        {
+          nombre: product.tono || 'Base',
+          hex: '',
+          imagen_url: image_urls[0],
+        },
+      ],
+    };
+  });
 
 const remoteCategories = ['Selección online', 'Colección atelier', 'Drop limitado'];
 const remoteTones = ['Crema', 'Marfil', 'Negro', 'Borgoña'];
 const remoteMaterials = ['Selección Azami', 'Cuero premium', 'Edición online'];
+
+function parseArrayMaybe(value) {
+  if (Array.isArray(value)) return value;
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function normalizeImageUrls(product, fallbackImage) {
+  const primary = String(product?.imagen_url || fallbackImage || '').trim();
+  const fromPayload = parseArrayMaybe(product?.image_urls)
+    .map((url) => String(url || '').trim())
+    .filter(Boolean);
+
+  const unique = [...new Set([primary, ...fromPayload].filter(Boolean))].slice(0, 3);
+
+  if (!unique.length) {
+    unique.push(fallbackImage);
+  }
+
+  while (unique.length < 3) {
+    unique.push(unique[unique.length - 1]);
+  }
+
+  return unique;
+}
+
+function normalizeColorVariants(product, { fallbackTone, fallbackImage, imageUrls }) {
+  const payload = parseArrayMaybe(product?.color_variants || product?.color_variants_json)
+    .map((variant) => {
+      if (!variant || typeof variant !== 'object') return null;
+      const nombre = String(variant.nombre || variant.name || '').trim();
+      if (!nombre) return null;
+      const hex = String(variant.hex || '').trim();
+      const imagen_url = String(variant.imagen_url || variant.image_url || variant.image || '').trim();
+
+      return {
+        nombre,
+        hex,
+        imagen_url: imagen_url || imageUrls[0] || fallbackImage,
+      };
+    })
+    .filter(Boolean);
+
+  if (!payload.length) {
+    return [{
+      nombre: fallbackTone,
+      hex: '',
+      imagen_url: imageUrls[0] || fallbackImage,
+    }];
+  }
+
+  return payload;
+}
 
 export function normalizeRemoteProducts(products) {
   if (!Array.isArray(products)) {
     return [];
   }
 
-  return products.map((product, index) => ({
-    id: `remote-${product.id ?? index}`,
-    backendId: Number(product.id) || null,
-    nombre: product.nombre || `Producto ${index + 1}`,
-    descripcion: product.descripcion || 'Pieza disponible en el catálogo en vivo de Azami.',
-    precio: normalizePrice(product.precio),
-    imagen_url: product.imagen_url || curatedFallbackImages[index % curatedFallbackImages.length],
-    stock: Number(product.stock) || 0,
-    categoria: product.categoria || remoteCategories[index % remoteCategories.length],
-    tono: product.tono || remoteTones[index % remoteTones.length],
-    material: product.material || remoteMaterials[index % remoteMaterials.length],
-    etiqueta: product.etiqueta || 'Online'
-  }));
+  return products.map((product, index) => {
+    const fallbackImage = curatedFallbackImages[index % curatedFallbackImages.length];
+    const fallbackTone = product.tono || remoteTones[index % remoteTones.length];
+    const image_urls = normalizeImageUrls(product, fallbackImage);
+    const color_variants = normalizeColorVariants(product, {
+      fallbackTone,
+      fallbackImage,
+      imageUrls: image_urls,
+    });
+
+    return {
+      id: `remote-${product.id ?? index}`,
+      backendId: Number(product.id) || null,
+      nombre: product.nombre || `Producto ${index + 1}`,
+      descripcion: product.descripcion || 'Pieza disponible en el catálogo en vivo de Azami.',
+      precio: normalizePrice(product.precio),
+      imagen_url: image_urls[0],
+      image_urls,
+      color_variants,
+      stock: Number(product.stock) || 0,
+      categoria: product.categoria || remoteCategories[index % remoteCategories.length],
+      tono: fallbackTone,
+      material: product.material || remoteMaterials[index % remoteMaterials.length],
+      etiqueta: product.etiqueta || 'Online'
+    };
+  });
 }

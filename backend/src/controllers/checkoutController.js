@@ -3,6 +3,7 @@ import pool from '../db.js';
 import { sendOrderConfirmationEmail } from '../email.js';
 import { calculateShipping, STORE_CURRENCY, normalizePrice } from '../pricing.js';
 import { logActividad } from '../userSchema.js';
+import { calculateBestDiscount } from '../services/discountService.js';
 
 function clientIp(req) {
   return (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress || null;
@@ -197,6 +198,67 @@ export function createWompiWidgetConfig(req, res) {
   });
 }
 
+export async function getCheckoutQuote(req, res) {
+  const items = sanitizeOrderItems(req.body.items);
+  const email = String(req.body.email || '').trim().toLowerCase();
+
+  if (!items.length) {
+    return res.status(400).json({ error: 'Debes enviar al menos un producto válido.' });
+  }
+
+  try {
+    const productIds = items.map((item) => item.productId);
+    const placeholders = productIds.map(() => '?').join(',');
+    const [productRows] = await pool.query(
+      `SELECT id, nombre, precio FROM productos WHERE id IN (${placeholders})`,
+      productIds
+    );
+
+    if (productRows.length !== productIds.length) {
+      return res.status(400).json({ error: 'Uno o más productos no existen en la base de datos.' });
+    }
+
+    const productsById = new Map(productRows.map((row) => [row.id, row]));
+    const orderItems = items.map((item) => {
+      const product = productsById.get(item.productId);
+      return {
+        productId: item.productId,
+        quantity: item.quantity,
+        unitPrice: normalizePrice(product?.precio),
+      };
+    });
+
+    const subtotal = orderItems.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
+    const totalQuantity = orderItems.reduce((sum, item) => sum + item.quantity, 0);
+    const appliedDiscount = await calculateBestDiscount({
+      subtotal,
+      totalQuantity,
+      email,
+    });
+    const discountAmount = Number(appliedDiscount.amount || 0);
+    const shipping = calculateShipping(subtotal - discountAmount);
+    const total = subtotal - discountAmount + shipping;
+
+    return res.json({
+      subtotal,
+      descuento_total: discountAmount,
+      descuento_regla: appliedDiscount.rule
+        ? {
+          id: appliedDiscount.rule.id,
+          nombre: appliedDiscount.rule.nombre,
+          tipo: appliedDiscount.rule.tipo,
+          porcentaje: Number(appliedDiscount.rule.discount_percent || 0),
+        }
+        : null,
+      envio: shipping,
+      total,
+      moneda: STORE_CURRENCY,
+    });
+  } catch (error) {
+    return res.status(500).json({ error: 'No se pudo calcular el resumen del checkout.' });
+  }
+}
+
 export async function createGuestOrder(req, res) {
   const items = sanitizeOrderItems(req.body.items);
   const customer = normalizeGuestCustomer(req.body.customer);
@@ -301,8 +363,15 @@ export async function createGuestOrder(req, res) {
     }
 
     const subtotal = orderItems.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
-    const shipping = calculateShipping(subtotal);
-    const total = subtotal + shipping;
+    const totalQuantity = orderItems.reduce((sum, item) => sum + item.quantity, 0);
+    const appliedDiscount = await calculateBestDiscount({
+      subtotal,
+      totalQuantity,
+      email: customer.email,
+    });
+    const discountAmount = Number(appliedDiscount.amount || 0);
+    const shipping = calculateShipping(subtotal - discountAmount);
+    const total = subtotal - discountAmount + shipping;
     const orderState = resolveOrderState(paymentStatus);
 
     connection = await pool.getConnection();
@@ -310,8 +379,8 @@ export async function createGuestOrder(req, res) {
 
     const [result] = await connection.query(
       `INSERT INTO ordenes
-         (usuario_id, cliente_tipo, cliente_nombre, cliente_email, cliente_telefono, subtotal, envio, total, moneda, estado, referencia_pago, payment_provider, payment_method, payment_status, direccion_envio_json)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         (usuario_id, cliente_tipo, cliente_nombre, cliente_email, cliente_telefono, subtotal, envio, descuento_total, descuento_regla_id, descuento_detalle_json, total, moneda, estado, referencia_pago, payment_provider, payment_method, payment_status, direccion_envio_json)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         null,
         'guest',
@@ -320,6 +389,16 @@ export async function createGuestOrder(req, res) {
         customer.telefono,
         subtotal.toFixed(2),
         shipping.toFixed(2),
+        discountAmount.toFixed(2),
+        appliedDiscount.rule?.id || null,
+        appliedDiscount.rule
+          ? JSON.stringify({
+            id: appliedDiscount.rule.id,
+            nombre: appliedDiscount.rule.nombre,
+            tipo: appliedDiscount.rule.tipo,
+            porcentaje: Number(appliedDiscount.rule.discount_percent || 0),
+          })
+          : null,
         total.toFixed(2),
         STORE_CURRENCY,
         orderState,
@@ -370,6 +449,15 @@ export async function createGuestOrder(req, res) {
       cliente_telefono: customer.telefono,
       subtotal,
       envio: shipping,
+      descuento_total: discountAmount,
+      descuento_regla: appliedDiscount.rule
+        ? {
+          id: appliedDiscount.rule.id,
+          nombre: appliedDiscount.rule.nombre,
+          tipo: appliedDiscount.rule.tipo,
+          porcentaje: Number(appliedDiscount.rule.discount_percent || 0),
+        }
+        : null,
       total,
       moneda: STORE_CURRENCY,
       estado: orderState,

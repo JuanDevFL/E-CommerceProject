@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
-import { createGuestOrder, createMyOrder, fetchMyAddresses, fetchWompiTransaction, fetchWompiWidgetConfig } from '../api';
-import { FREE_SHIPPING_THRESHOLD_COP, STANDARD_SHIPPING_FEE_COP, STORE_CURRENCY, formatPrice, normalizePrice } from '../utils/pricing.js';
+import { createGuestOrder, createMyOrder, fetchCheckoutQuote, fetchMyAddresses, fetchWompiTransaction, fetchWompiWidgetConfig } from '../api';
+import { STORE_CURRENCY, formatPrice, normalizePrice } from '../utils/pricing.js';
 import './CheckoutPage.css';
 
 const WOMPI_CONTEXT_KEY_PREFIX = 'azami-wompi-context:';
@@ -174,7 +174,7 @@ function formatOrderStatusLabel(status) {
   if (normalized === 'pendiente') return 'Pendiente';
   if (normalized === 'enviado') return 'Enviado';
   if (normalized === 'entregado') return 'Entregado';
-  if (normalized === 'cancelado') return 'Cancelado';
+  if (normalized === 'cancelado') return 'Pago cancelado';
 
   return status || 'Registrado';
 }
@@ -361,6 +361,7 @@ export default function CheckoutPage({ user, cartItems, onBackToCatalog, onOrder
   const [wompiWidgetError, setWompiWidgetError] = useState('');
   const [isPreparingWompiOrder, setIsPreparingWompiOrder] = useState(false);
   const [wompiReturn, setWompiReturn] = useState(null);
+  const [quoteSummary, setQuoteSummary] = useState(null);
   const wompiSyncStartedRef = useRef(false);
   const [guestForm, setGuestForm] = useState(() => ({
     ...initialGuestForm,
@@ -406,13 +407,57 @@ export default function CheckoutPage({ user, cartItems, onBackToCatalog, onOrder
     }));
   }, [user]);
 
-  const subtotal = useMemo(
+  const rawSubtotal = useMemo(
     () => cartItems.reduce((total, item) => total + normalizePrice(item.precio) * item.quantity, 0),
     [cartItems]
   );
 
-  const shipping = subtotal >= FREE_SHIPPING_THRESHOLD_COP ? 0 : STANDARD_SHIPPING_FEE_COP;
-  const total = subtotal + shipping;
+  const persistableItems = useMemo(
+    () => cartItems.map((item) => ({
+      productId: extractBackendProductId(item),
+      quantity: Number(item.quantity) || 0,
+      nombre: item.nombre,
+    })),
+    [cartItems]
+  );
+
+  const hasUnsupportedItems = persistableItems.some((item) => !item.productId || item.quantity <= 0);
+
+  useEffect(() => {
+    let active = true;
+
+    const filteredItems = persistableItems
+      .filter((item) => item.productId && item.quantity > 0)
+      .map((item) => ({ productId: item.productId, quantity: item.quantity }));
+
+    if (!filteredItems.length || hasUnsupportedItems) {
+      setQuoteSummary(null);
+      return undefined;
+    }
+
+    fetchCheckoutQuote({
+      items: filteredItems,
+      email: user?.email || guestForm.email,
+    })
+      .then((quote) => {
+        if (!active) return;
+        setQuoteSummary(quote);
+      })
+      .catch(() => {
+        if (!active) return;
+        setQuoteSummary(null);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [guestForm.email, hasUnsupportedItems, persistableItems, user?.email]);
+
+  const subtotal = Number(quoteSummary?.subtotal ?? rawSubtotal ?? 0);
+  const discountTotal = Number(quoteSummary?.descuento_total || 0);
+  const shipping = Number(quoteSummary?.envio || 0);
+  const total = Number(quoteSummary?.total ?? subtotal + shipping);
+  const appliedDiscountRule = quoteSummary?.descuento_regla || null;
 
   const selectedAddress = user
     ? addresses.find((row) => String(row.id) === selectedAddressId) || null
@@ -444,16 +489,6 @@ export default function CheckoutPage({ user, cartItems, onBackToCatalog, onOrder
     [cartItems, reference, selectedAddress, total, user, whatsappCustomer]
   );
 
-  const persistableItems = useMemo(
-    () => cartItems.map((item) => ({
-      productId: extractBackendProductId(item),
-      quantity: Number(item.quantity) || 0,
-      nombre: item.nombre,
-    })),
-    [cartItems]
-  );
-
-  const hasUnsupportedItems = persistableItems.some((item) => !item.productId || item.quantity <= 0);
   const guestFieldsCompleted = Boolean(
     guestForm.nombre.trim()
     && guestForm.email.trim()
@@ -910,6 +945,7 @@ export default function CheckoutPage({ user, cartItems, onBackToCatalog, onOrder
     const orderItems = returnOrder?.items || [];
     const address = returnOrder?.direccion_envio || null;
     const subtotal = returnOrder?.subtotal ?? returnOrder?.total ?? null;
+    const descuento = returnOrder?.descuento_total ?? 0;
     const envio = returnOrder?.envio ?? 0;
 
     if (!isSuccess) {
@@ -1030,6 +1066,12 @@ export default function CheckoutPage({ user, cartItems, onBackToCatalog, onOrder
                       <div className="checkout-receipt-total-row">
                         <span>Subtotal</span>
                         <span>{formatPrice(subtotal)}</span>
+                      </div>
+                    ) : null}
+                    {Number(descuento || 0) > 0 ? (
+                      <div className="checkout-receipt-total-row">
+                        <span>Descuento</span>
+                        <span>-{formatPrice(descuento)}</span>
                       </div>
                     ) : null}
                     <div className="checkout-receipt-total-row">
@@ -1269,6 +1311,12 @@ export default function CheckoutPage({ user, cartItems, onBackToCatalog, onOrder
                 <span>Subtotal</span>
                 <strong>{formatPrice(subtotal)}</strong>
               </div>
+              {discountTotal > 0 ? (
+                <div className="checkout-summary-row">
+                  <span>Descuento{appliedDiscountRule?.nombre ? ` (${appliedDiscountRule.nombre})` : ''}</span>
+                  <strong>-{formatPrice(discountTotal)}</strong>
+                </div>
+              ) : null}
               <div className="checkout-summary-row">
                 <span>Envío</span>
                 <strong>{shipping === 0 ? 'Gratis' : formatPrice(shipping)}</strong>

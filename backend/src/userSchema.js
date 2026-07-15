@@ -248,6 +248,68 @@ export async function ensureOrdersTable() {
   if (!existingColumns.has('notas_admin')) {
     await pool.query('ALTER TABLE ordenes ADD COLUMN notas_admin TEXT NULL AFTER vendedor_email');
   }
+
+  if (!existingColumns.has('descuento_total')) {
+    await pool.query('ALTER TABLE ordenes ADD COLUMN descuento_total DECIMAL(10,2) NOT NULL DEFAULT 0 AFTER envio');
+  }
+
+  if (!existingColumns.has('descuento_regla_id')) {
+    await pool.query('ALTER TABLE ordenes ADD COLUMN descuento_regla_id INT NULL AFTER descuento_total');
+  }
+
+  if (!existingColumns.has('descuento_detalle_json')) {
+    await pool.query('ALTER TABLE ordenes ADD COLUMN descuento_detalle_json TEXT NULL AFTER descuento_regla_id');
+  }
+}
+
+export async function ensureProductosTableEnhancements() {
+  const databaseName = process.env.DB_NAME || process.env.MYSQLDATABASE || 'ecommerce_db';
+  const [rows] = await pool.query(
+    `SELECT COLUMN_NAME
+     FROM INFORMATION_SCHEMA.COLUMNS
+     WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'productos'`,
+    [databaseName]
+  );
+
+  const existingColumns = new Set(rows.map((row) => row.COLUMN_NAME));
+
+  if (!existingColumns.has('image_urls')) {
+    await pool.query('ALTER TABLE productos ADD COLUMN image_urls TEXT NULL AFTER imagen_url');
+  }
+
+  if (!existingColumns.has('color_variants_json')) {
+    await pool.query('ALTER TABLE productos ADD COLUMN color_variants_json LONGTEXT NULL AFTER tono');
+  }
+}
+
+export async function ensureDiscountTables() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS discount_rules (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      nombre VARCHAR(160) NOT NULL,
+      tipo ENUM('new_user', 'quantity') NOT NULL,
+      min_order_value DECIMAL(10,2) NOT NULL DEFAULT 0,
+      min_quantity INT NOT NULL DEFAULT 0,
+      discount_percent DECIMAL(5,2) NOT NULL,
+      max_uses_per_user INT NULL,
+      activo BOOLEAN NOT NULL DEFAULT TRUE,
+      prioridad INT NOT NULL DEFAULT 100,
+      creado_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      actualizado_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    )
+  `);
+
+  const [rulesCountRows] = await pool.query('SELECT COUNT(*) AS total FROM discount_rules');
+  const rulesCount = Number(rulesCountRows[0]?.total || 0);
+
+  if (rulesCount === 0) {
+    await pool.query(
+      `INSERT INTO discount_rules
+        (nombre, tipo, min_order_value, min_quantity, discount_percent, max_uses_per_user, activo, prioridad)
+       VALUES (?, 'new_user', 0, 0, 10, 1, TRUE, 10)`,
+      ['Nuevo usuario 10% (1 uso)']
+    );
+  }
 }
 
 export async function ensureAddressesTable() {

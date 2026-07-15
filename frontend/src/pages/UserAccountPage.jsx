@@ -31,7 +31,7 @@ function StatusBadge({ estado }) {
     pagado: { label: 'Pago confirmado', cls: 'status-confirmed' },
     enviado: { label: 'Enviado', cls: 'status-shipped' },
     entregado: { label: 'Entregado', cls: 'status-delivered' },
-    cancelado: { label: 'Cancelado', cls: 'status-cancelled' },
+    cancelado: { label: 'Pago cancelado', cls: 'status-cancelled' },
   };
   const s = map[estado] || { label: estado, cls: 'status-pending' };
   return <span className={`acct-status-badge ${s.cls}`}>{s.label}</span>;
