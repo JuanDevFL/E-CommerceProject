@@ -58,8 +58,10 @@ function ProductCard({ product, wishlistIds, onToggleWishlist, onAddToCart, onBu
   }, [product.id]);
 
   const selectedVariant = colorVariants[selectedColorIndex] || colorVariants[0];
-  const currentImage = selectedVariant?.imagen_url || gallery[selectedImageIndex] || product.imagen_url;
-  const cardImages = [...new Set([currentImage, ...gallery].filter(Boolean))].slice(0, 3);
+  const selectedVariantGallery = Array.isArray(selectedVariant?.image_urls) && selectedVariant.image_urls.length > 0
+    ? selectedVariant.image_urls
+    : [];
+  const cardImages = [...new Set([selectedVariant?.imagen_url, ...selectedVariantGallery, ...gallery].filter(Boolean))].slice(0, 3);
 
   while (cardImages.length < 3 && cardImages.length > 0) {
     cardImages.push(cardImages[cardImages.length - 1]);

@@ -1,5 +1,5 @@
 import { useParams, Link } from 'react-router-dom';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { formatPrice } from '../utils/pricing.js';
 import { translateCategoryLabel, translateProductTagLabel } from '../utils/catalogLabels.js';
 
@@ -48,10 +48,27 @@ function ProductDetailPage({ products, productsLoading = false, wishlistIds = []
     ? product.color_variants
     : [{ nombre: product.tono || 'Base', imagen_url: product.imagen_url, hex: '' }];
 
-  const [selectedImage, setSelectedImage] = useState(imageGallery[0]);
+  const [selectedColorIndex, setSelectedColorIndex] = useState(0);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const selectedVariant = colorVariants[selectedColorIndex] || colorVariants[0];
+  const selectedVariantGallery = useMemo(() => {
+    const variantImages = Array.isArray(selectedVariant?.image_urls) ? selectedVariant.image_urls : [];
+    const unique = [...new Set([selectedVariant?.imagen_url, ...variantImages, ...imageGallery].filter(Boolean))];
+    return unique.length > 0 ? unique : imageGallery;
+  }, [selectedVariant, imageGallery]);
 
-  const selectedTone = colorVariants.find((variant) => variant.imagen_url === selectedImage)?.nombre
-    || product.tono;
+  useEffect(() => {
+    setSelectedColorIndex(0);
+    setSelectedImageIndex(0);
+  }, [product.id]);
+
+  useEffect(() => {
+    setSelectedImageIndex(0);
+  }, [selectedColorIndex]);
+
+  const selectedImage = selectedVariantGallery[selectedImageIndex] || selectedVariantGallery[0] || product.imagen_url;
+
+  const selectedTone = selectedVariant?.nombre || product.tono;
 
   return (
     <main className="product-detail-page">
@@ -73,14 +90,14 @@ function ProductDetailPage({ products, productsLoading = false, wishlistIds = []
             decoding="async"
             referrerPolicy="no-referrer"
           />
-          {imageGallery.length > 1 && (
+          {selectedVariantGallery.length > 1 && (
             <div className="product-detail-thumbs">
-              {imageGallery.map((image, index) => (
+              {selectedVariantGallery.map((image, index) => (
                 <button
                   key={`${product.id}-${image}-${index}`}
                   type="button"
                   className={`product-detail-thumb ${image === selectedImage ? 'is-active' : ''}`}
-                  onClick={() => setSelectedImage(image)}
+                  onClick={() => setSelectedImageIndex(index)}
                   aria-label={`Ver imagen ${index + 1}`}
                 >
                   <img src={image} alt={`Miniatura ${index + 1} de ${product.nombre}`} loading="lazy" referrerPolicy="no-referrer" />
@@ -107,7 +124,7 @@ function ProductDetailPage({ products, productsLoading = false, wishlistIds = []
                   key={`${product.id}-${variant.nombre}-${index}`}
                   type="button"
                   className="product-detail-color-pill"
-                  onClick={() => setSelectedImage(variant.imagen_url || imageGallery[0])}
+                  onClick={() => setSelectedColorIndex(index)}
                 >
                   {variant.nombre}
                 </button>

@@ -61,6 +61,30 @@ const pruebaImgPreset = {
   etiqueta: 'Prueba carousel',
 };
 
+const pruebaImgColorVariantForms = [
+  {
+    nombre: 'Negro',
+    hex: '#121212',
+    imagen_url: 'https://images.pexels.com/photos/1152077/pexels-photo-1152077.jpeg?auto=compress&cs=tinysrgb&w=1600',
+    imagen_url_2: 'https://images.pexels.com/photos/12113999/pexels-photo-12113999.jpeg?auto=compress&cs=tinysrgb&w=1600',
+    imagen_url_3: 'https://images.pexels.com/photos/17115369/pexels-photo-17115369.jpeg?auto=compress&cs=tinysrgb&w=1600',
+  },
+  {
+    nombre: 'Marfil',
+    hex: '#F6F0E6',
+    imagen_url: 'https://images.pexels.com/photos/1038000/pexels-photo-1038000.jpeg?auto=compress&cs=tinysrgb&w=1600',
+    imagen_url_2: 'https://images.pexels.com/photos/2081199/pexels-photo-2081199.jpeg?auto=compress&cs=tinysrgb&w=1600',
+    imagen_url_3: 'https://images.pexels.com/photos/32498584/pexels-photo-32498584.jpeg?auto=compress&cs=tinysrgb&w=1600',
+  },
+  {
+    nombre: 'Verde oliva',
+    hex: '#556B2F',
+    imagen_url: 'https://images.pexels.com/photos/1374910/pexels-photo-1374910.jpeg?auto=compress&cs=tinysrgb&w=1600',
+    imagen_url_2: 'https://images.pexels.com/photos/2371502/pexels-photo-2371502.jpeg?auto=compress&cs=tinysrgb&w=1600',
+    imagen_url_3: 'https://images.pexels.com/photos/904350/pexels-photo-904350.jpeg?auto=compress&cs=tinysrgb&w=1600',
+  },
+];
+
 function formatInteger(value) {
   return new Intl.NumberFormat('es-MX', {
     maximumFractionDigits: 0,
@@ -259,6 +283,114 @@ function parseJsonArray(value) {
   }
 }
 
+function createEmptyColorVariantForm(index = 1) {
+  return {
+    nombre: `Color ${index}`,
+    hex: '',
+    imagen_url: '',
+    imagen_url_2: '',
+    imagen_url_3: '',
+  };
+}
+
+function imageFieldByIndex(imageIndex) {
+  if (imageIndex === 1) return 'imagen_url_2';
+  if (imageIndex === 2) return 'imagen_url_3';
+  return 'imagen_url';
+}
+
+function buildImageUrlsFromVariantForm(variantForm) {
+  const urls = [variantForm.imagen_url, variantForm.imagen_url_2, variantForm.imagen_url_3]
+    .map((value) => String(value || '').trim())
+    .filter(Boolean);
+
+  return [...new Set(urls)].slice(0, 3);
+}
+
+function normalizeVariantForms(rawVariants, fallbackUrls = [], fallbackTone = '') {
+  const forms = (Array.isArray(rawVariants) ? rawVariants : [])
+    .map((variant, index) => {
+      const localUrls = buildImageUrlsFromVariantForm({
+        imagen_url: variant?.imagen_url,
+        imagen_url_2: '',
+        imagen_url_3: '',
+      });
+      const embeddedUrls = parseJsonArray(variant?.image_urls)
+        .map((url) => String(url || '').trim())
+        .filter(Boolean);
+      const merged = [...new Set([...embeddedUrls, ...localUrls, ...fallbackUrls])].slice(0, 3);
+
+      return {
+        nombre: String(variant?.nombre || variant?.name || `Color ${index + 1}`).trim(),
+        hex: String(variant?.hex || '').trim(),
+        imagen_url: merged[0] || '',
+        imagen_url_2: merged[1] || '',
+        imagen_url_3: merged[2] || '',
+      };
+    })
+    .filter((variant) => String(variant.nombre || '').trim());
+
+  if (forms.length > 0) {
+    return forms;
+  }
+
+  const mergedFallback = [...new Set((fallbackUrls || []).map((url) => String(url || '').trim()).filter(Boolean))].slice(0, 3);
+  return [{
+    nombre: String(fallbackTone || 'Color 1').trim() || 'Color 1',
+    hex: '',
+    imagen_url: mergedFallback[0] || '',
+    imagen_url_2: mergedFallback[1] || '',
+    imagen_url_3: mergedFallback[2] || '',
+  }];
+}
+
+function buildProductMediaPayload(variantForms, fallbackTone = '') {
+  const normalized = (Array.isArray(variantForms) ? variantForms : [])
+    .map((variant, index) => {
+      const nombre = String(variant.nombre || '').trim() || `Color ${index + 1}`;
+      const hex = String(variant.hex || '').trim();
+      const urls = buildImageUrlsFromVariantForm(variant);
+      return {
+        nombre,
+        hex,
+        image_urls: urls,
+        imagen_url: urls[0] || '',
+      };
+    })
+    .filter((variant) => variant.nombre);
+
+  if (normalized.length === 0) {
+    return {
+      tono: String(fallbackTone || 'Color 1').trim() || 'Color 1',
+      imagen_url: '',
+      image_urls: [],
+      color_variants: [{
+        nombre: String(fallbackTone || 'Color 1').trim() || 'Color 1',
+        hex: '',
+        imagen_url: '',
+        image_urls: [],
+      }],
+    };
+  }
+
+  const firstWithImages = normalized.find((variant) => variant.image_urls.length > 0);
+  const baseGallery = firstWithImages
+    ? firstWithImages.image_urls
+    : [...new Set(normalized.map((variant) => variant.imagen_url).filter(Boolean))].slice(0, 3);
+
+  return {
+    tono: normalized[0].nombre || String(fallbackTone || 'Color 1').trim() || 'Color 1',
+    imagen_url: baseGallery[0] || '',
+    image_urls: baseGallery,
+    color_variants: normalized.map((variant) => ({
+      nombre: variant.nombre,
+      hex: variant.hex,
+      imagen_url: variant.imagen_url,
+      image_urls: variant.image_urls,
+    })),
+  };
+}
+
 function AdminDashboardPage({ user, onProductCreated }) {
   const offlineSalesInputRef = useRef(null);
   const createImageInputRef = useRef(null);
@@ -268,6 +400,9 @@ function AdminDashboardPage({ user, onProductCreated }) {
   const [dashboard, setDashboard] = useState(null);
   const [roleDrafts, setRoleDrafts] = useState({});
   const [productForm, setProductForm] = useState(initialProductForm);
+  const [createColorVariants, setCreateColorVariants] = useState([createEmptyColorVariantForm(1)]);
+  const [activeCreateColorIndex, setActiveCreateColorIndex] = useState(0);
+  const [pendingCreateImageSlot, setPendingCreateImageSlot] = useState(0);
   const [loading, setLoading] = useState(true);
   const [dashboardError, setDashboardError] = useState('');
   const [actionError, setActionError] = useState('');
@@ -278,6 +413,9 @@ function AdminDashboardPage({ user, onProductCreated }) {
   const [updatingUserId, setUpdatingUserId] = useState(null);
   const [editingProduct, setEditingProduct] = useState(null);
   const [editForm, setEditForm] = useState(initialProductForm);
+  const [editColorVariants, setEditColorVariants] = useState([createEmptyColorVariantForm(1)]);
+  const [activeEditColorIndex, setActiveEditColorIndex] = useState(0);
+  const [pendingEditImageSlot, setPendingEditImageSlot] = useState(0);
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [announcementForm, setAnnouncementForm] = useState({ imagen_url: '', estado: 'activo' });
   const [announcementDrafts, setAnnouncementDrafts] = useState({});
@@ -403,12 +541,13 @@ function AdminDashboardPage({ user, onProductCreated }) {
     setSuccessMessage('');
 
     try {
-      const imageUrls = buildImageUrlsFromForm(productForm);
+      const mediaPayload = buildProductMediaPayload(createColorVariants, productForm.tono);
       const payload = {
         ...productForm,
-        imagen_url: imageUrls[0] || productForm.imagen_url,
-        image_urls: imageUrls,
-        color_variants: parseColorVariantsText(productForm.color_variants_text, imageUrls[0], productForm.tono),
+        tono: mediaPayload.tono,
+        imagen_url: mediaPayload.imagen_url,
+        image_urls: mediaPayload.image_urls,
+        color_variants: mediaPayload.color_variants,
         precio: Number(productForm.precio),
         stock: Number(productForm.stock || 0),
       };
@@ -416,6 +555,8 @@ function AdminDashboardPage({ user, onProductCreated }) {
       const createdProduct = await createAdminProducto(payload);
       setSuccessMessage(`${createdProduct.nombre} se agregó al catálogo.`);
       setProductForm(initialProductForm);
+      setCreateColorVariants([createEmptyColorVariantForm(1)]);
+      setActiveCreateColorIndex(0);
       onProductCreated?.(createdProduct);
       await loadDashboard();
     } catch (error) {
@@ -428,14 +569,19 @@ function AdminDashboardPage({ user, onProductCreated }) {
   const handleEditClick = (product) => {
     const imageUrls = parseJsonArray(product.image_urls);
     const colorVariants = parseJsonArray(product.color_variants_json);
+    const normalizedColorVariants = normalizeVariantForms(
+      colorVariants,
+      [...new Set([product.imagen_url, ...imageUrls].filter(Boolean))],
+      product.tono
+    );
     setEditingProduct(product);
     setEditForm({
       nombre: product.nombre || '',
       descripcion: product.descripcion || '',
       precio: String(normalizePrice(product.precio) || ''),
-      imagen_url: product.imagen_url || '',
-      imagen_url_2: imageUrls[1] || '',
-      imagen_url_3: imageUrls[2] || '',
+      imagen_url: product.imagen_url || normalizedColorVariants[0]?.imagen_url || '',
+      imagen_url_2: imageUrls[1] || normalizedColorVariants[0]?.imagen_url_2 || '',
+      imagen_url_3: imageUrls[2] || normalizedColorVariants[0]?.imagen_url_3 || '',
       color_variants_text: variantsToText(colorVariants),
       stock: String(product.stock || '0'),
       categoria: product.categoria || '',
@@ -443,6 +589,8 @@ function AdminDashboardPage({ user, onProductCreated }) {
       material: product.material || '',
       etiqueta: product.etiqueta || '',
     });
+    setEditColorVariants(normalizedColorVariants);
+    setActiveEditColorIndex(0);
   };
 
   const handleEditFieldChange = (event) => {
@@ -455,6 +603,8 @@ function AdminDashboardPage({ user, onProductCreated }) {
       ...current,
       ...pruebaImgPreset,
     }));
+    setCreateColorVariants(pruebaImgColorVariantForms.map((variant) => ({ ...variant })));
+    setActiveCreateColorIndex(0);
   };
 
   const applyPruebaPresetToEdit = () => {
@@ -462,6 +612,54 @@ function AdminDashboardPage({ user, onProductCreated }) {
       ...current,
       ...pruebaImgPreset,
     }));
+    setEditColorVariants(pruebaImgColorVariantForms.map((variant) => ({ ...variant })));
+    setActiveEditColorIndex(0);
+  };
+
+  const addCreateColorVariant = () => {
+    setCreateColorVariants((current) => {
+      const next = [...current, createEmptyColorVariantForm(current.length + 1)];
+      setActiveCreateColorIndex(next.length - 1);
+      return next;
+    });
+  };
+
+  const removeCreateColorVariant = (index) => {
+    setCreateColorVariants((current) => {
+      if (current.length <= 1) return current;
+      const next = current.filter((_, variantIndex) => variantIndex !== index);
+      setActiveCreateColorIndex((prev) => Math.max(0, Math.min(prev, next.length - 1)));
+      return next;
+    });
+  };
+
+  const updateCreateColorVariantField = (index, field, value) => {
+    setCreateColorVariants((current) => current.map((variant, variantIndex) => (
+      variantIndex === index ? { ...variant, [field]: value } : variant
+    )));
+  };
+
+  const addEditColorVariant = () => {
+    setEditColorVariants((current) => {
+      const next = [...current, createEmptyColorVariantForm(current.length + 1)];
+      setActiveEditColorIndex(next.length - 1);
+      return next;
+    });
+  };
+
+  const removeEditColorVariant = (index) => {
+    setEditColorVariants((current) => {
+      if (current.length <= 1) return current;
+      const next = current.filter((_, variantIndex) => variantIndex !== index);
+      setActiveEditColorIndex((prev) => Math.max(0, Math.min(prev, next.length - 1)));
+      return next;
+    });
+  };
+
+  const updateEditColorVariantField = (index, field, value) => {
+    setEditColorVariants((current) => current.map((variant, variantIndex) => (
+      variantIndex === index ? { ...variant, [field]: value } : variant
+    )));
   };
 
   const handleCreateImageFile = async (event) => {
@@ -471,11 +669,13 @@ function AdminDashboardPage({ user, onProductCreated }) {
     setActionError('');
     try {
       const { url } = await uploadProductImage(file);
-      setProductForm((current) => ({ ...current, imagen_url: url }));
+      const targetField = imageFieldByIndex(pendingCreateImageSlot);
+      updateCreateColorVariantField(activeCreateColorIndex, targetField, url);
     } catch (error) {
       setActionError(error.message || 'No se pudo subir la imagen.');
     } finally {
       setIsUploadingCreateImage(false);
+      event.target.value = '';
     }
   };
 
@@ -486,11 +686,13 @@ function AdminDashboardPage({ user, onProductCreated }) {
     setActionError('');
     try {
       const { url } = await uploadProductImage(file);
-      setEditForm((current) => ({ ...current, imagen_url: url }));
+      const targetField = imageFieldByIndex(pendingEditImageSlot);
+      updateEditColorVariantField(activeEditColorIndex, targetField, url);
     } catch (error) {
       setActionError(error.message || 'No se pudo subir la imagen.');
     } finally {
       setIsUploadingEditImage(false);
+      event.target.value = '';
     }
   };
 
@@ -501,12 +703,13 @@ function AdminDashboardPage({ user, onProductCreated }) {
     setSuccessMessage('');
 
     try {
-      const imageUrls = buildImageUrlsFromForm(editForm);
+      const mediaPayload = buildProductMediaPayload(editColorVariants, editForm.tono);
       const payload = {
         ...editForm,
-        imagen_url: imageUrls[0] || editForm.imagen_url,
-        image_urls: imageUrls,
-        color_variants: parseColorVariantsText(editForm.color_variants_text, imageUrls[0], editForm.tono),
+        tono: mediaPayload.tono,
+        imagen_url: mediaPayload.imagen_url,
+        image_urls: mediaPayload.image_urls,
+        color_variants: mediaPayload.color_variants,
         precio: Number(editForm.precio),
         stock: Number(editForm.stock || 0),
       };
@@ -514,6 +717,8 @@ function AdminDashboardPage({ user, onProductCreated }) {
       const updated = await updateAdminProducto(editingProduct.id, payload);
       setSuccessMessage(`${updated.nombre} se actualizó correctamente.`);
       setEditingProduct(null);
+      setEditColorVariants([createEmptyColorVariantForm(1)]);
+      setActiveEditColorIndex(0);
       onProductCreated?.(updated);
       await loadDashboard();
     } catch (error) {
@@ -1582,70 +1787,107 @@ function AdminDashboardPage({ user, onProductCreated }) {
                     </label>
 
                     <div className="admin-field admin-field-wide">
-                      <span>Imagen</span>
-                      <div className="admin-image-uploader">
-                        {productForm.imagen_url && (
-                          <img
-                            src={productForm.imagen_url}
-                            alt="Vista previa"
-                            className="admin-image-preview"
-                          />
-                        )}
-                        <div className="admin-image-uploader-controls">
-                          <input
-                            ref={createImageInputRef}
-                            type="file"
-                            accept="image/*"
-                            style={{ display: 'none' }}
-                            onChange={handleCreateImageFile}
-                          />
+                      <span>Colores e imágenes del producto</span>
+                      <div className="admin-inline-actions" style={{ marginBottom: '0.65rem', gap: '0.55rem', flexWrap: 'wrap' }}>
+                        {createColorVariants.map((variant, index) => (
+                          <button
+                            key={`create-color-${index}`}
+                            type="button"
+                            className="admin-secondary-button"
+                            style={{
+                              borderColor: activeCreateColorIndex === index ? 'var(--color-primary)' : undefined,
+                              color: activeCreateColorIndex === index ? 'var(--color-primary)' : undefined,
+                            }}
+                            onClick={() => setActiveCreateColorIndex(index)}
+                          >
+                            {variant.nombre || `Color ${index + 1}`}
+                          </button>
+                        ))}
+                        <button type="button" className="admin-secondary-button" onClick={addCreateColorVariant}>+ Añadir color</button>
+                        {createColorVariants.length > 1 && (
                           <button
                             type="button"
                             className="admin-secondary-button"
-                            onClick={() => createImageInputRef.current?.click()}
-                            disabled={isUploadingCreateImage}
+                            onClick={() => removeCreateColorVariant(activeCreateColorIndex)}
                           >
-                            {isUploadingCreateImage ? 'Subiendo...' : productForm.imagen_url ? 'Cambiar imagen' : 'Subir imagen'}
+                            Eliminar color activo
                           </button>
+                        )}
+                      </div>
+
+                      <div className="admin-form-grid" style={{ marginTop: '0.2rem' }}>
+                        <label className="admin-field">
+                          <span>Nombre del color</span>
                           <input
-                            type="url"
-                            name="imagen_url"
-                            value={productForm.imagen_url}
-                            onChange={handleProductFieldChange}
-                            placeholder="O pega una URL directamente"
-                            className="admin-image-url-input"
+                            type="text"
+                            value={createColorVariants[activeCreateColorIndex]?.nombre || ''}
+                            onChange={(event) => updateCreateColorVariantField(activeCreateColorIndex, 'nombre', event.target.value)}
+                            placeholder="Ej: Negro"
                           />
+                        </label>
+                        <label className="admin-field">
+                          <span>HEX (opcional)</span>
                           <input
-                            type="url"
-                            name="imagen_url_2"
-                            value={productForm.imagen_url_2}
-                            onChange={handleProductFieldChange}
-                            placeholder="URL imagen #2"
-                            className="admin-image-url-input"
+                            type="text"
+                            value={createColorVariants[activeCreateColorIndex]?.hex || ''}
+                            onChange={(event) => updateCreateColorVariantField(activeCreateColorIndex, 'hex', event.target.value)}
+                            placeholder="#121212"
                           />
-                          <input
-                            type="url"
-                            name="imagen_url_3"
-                            value={productForm.imagen_url_3}
-                            onChange={handleProductFieldChange}
-                            placeholder="URL imagen #3"
-                            className="admin-image-url-input"
+                        </label>
+                      </div>
+
+                      {(createColorVariants[activeCreateColorIndex]?.imagen_url
+                        || createColorVariants[activeCreateColorIndex]?.imagen_url_2
+                        || createColorVariants[activeCreateColorIndex]?.imagen_url_3) && (
+                        <div className="admin-image-uploader" style={{ marginTop: '0.7rem' }}>
+                          <img
+                            src={createColorVariants[activeCreateColorIndex]?.imagen_url || createColorVariants[activeCreateColorIndex]?.imagen_url_2 || createColorVariants[activeCreateColorIndex]?.imagen_url_3}
+                            alt="Vista previa del color activo"
+                            className="admin-image-preview"
                           />
                         </div>
-                      </div>
-                    </div>
+                      )}
 
-                    <label className="admin-field admin-field-wide">
-                      <span>Variantes de color (una por línea: Color|#HEX|URL imagen)</span>
-                      <textarea
-                        name="color_variants_text"
-                        value={productForm.color_variants_text}
-                        onChange={handleProductFieldChange}
-                        placeholder={"Ej: Negro|#121212|https://...\nMarfil|#F6F0E6|https://..."}
-                        rows="4"
+                      <input
+                        ref={createImageInputRef}
+                        type="file"
+                        accept="image/*"
+                        style={{ display: 'none' }}
+                        onChange={handleCreateImageFile}
                       />
-                      <small>Para probar el mini carrusel, registra 3 imágenes y asigna una URL por color.</small>
-                    </label>
+
+                      <div className="admin-image-uploader-controls" style={{ marginTop: '0.65rem' }}>
+                        {[0, 1, 2].map((imageIndex) => {
+                          const field = imageFieldByIndex(imageIndex);
+                          return (
+                            <div key={`create-image-slot-${imageIndex}`} className="admin-form-grid" style={{ marginBottom: '0.35rem' }}>
+                              <button
+                                type="button"
+                                className="admin-secondary-button"
+                                onClick={() => {
+                                  setPendingCreateImageSlot(imageIndex);
+                                  createImageInputRef.current?.click();
+                                }}
+                                disabled={isUploadingCreateImage}
+                              >
+                                {isUploadingCreateImage && pendingCreateImageSlot === imageIndex ? 'Subiendo...' : `Subir imagen ${imageIndex + 1}`}
+                              </button>
+                              <input
+                                type="url"
+                                value={createColorVariants[activeCreateColorIndex]?.[field] || ''}
+                                onChange={(event) => updateCreateColorVariantField(activeCreateColorIndex, field, event.target.value)}
+                                placeholder={`URL imagen ${imageIndex + 1} del color activo`}
+                                className="admin-image-url-input"
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      <small>
+                        Si agregas 2 colores, verás 2 botones. Si agregas 3 colores, verás 3 botones. Cada color puede tener hasta 3 imágenes.
+                      </small>
+                    </div>
                   </div>
 
                   <button type="submit" className="admin-primary-button" disabled={isCreatingProduct}>
@@ -2235,68 +2477,107 @@ function AdminDashboardPage({ user, onProductCreated }) {
                     <input type="text" name="etiqueta" value={editForm.etiqueta} onChange={handleEditFieldChange} />
                   </label>
                   <div className="admin-field admin-field-wide">
-                    <span>Imagen</span>
-                    <div className="admin-image-uploader">
-                      {editForm.imagen_url && (
-                        <img
-                          src={editForm.imagen_url}
-                          alt="Vista previa"
-                          className="admin-image-preview"
-                        />
-                      )}
-                      <div className="admin-image-uploader-controls">
-                        <input
-                          ref={editImageInputRef}
-                          type="file"
-                          accept="image/*"
-                          style={{ display: 'none' }}
-                          onChange={handleEditImageFile}
-                        />
+                    <span>Colores e imágenes del producto</span>
+                    <div className="admin-inline-actions" style={{ marginBottom: '0.65rem', gap: '0.55rem', flexWrap: 'wrap' }}>
+                      {editColorVariants.map((variant, index) => (
+                        <button
+                          key={`edit-color-${index}`}
+                          type="button"
+                          className="admin-secondary-button"
+                          style={{
+                            borderColor: activeEditColorIndex === index ? 'var(--color-primary)' : undefined,
+                            color: activeEditColorIndex === index ? 'var(--color-primary)' : undefined,
+                          }}
+                          onClick={() => setActiveEditColorIndex(index)}
+                        >
+                          {variant.nombre || `Color ${index + 1}`}
+                        </button>
+                      ))}
+                      <button type="button" className="admin-secondary-button" onClick={addEditColorVariant}>+ Añadir color</button>
+                      {editColorVariants.length > 1 && (
                         <button
                           type="button"
                           className="admin-secondary-button"
-                          onClick={() => editImageInputRef.current?.click()}
-                          disabled={isUploadingEditImage}
+                          onClick={() => removeEditColorVariant(activeEditColorIndex)}
                         >
-                          {isUploadingEditImage ? 'Subiendo...' : editForm.imagen_url ? 'Cambiar imagen' : 'Subir imagen'}
+                          Eliminar color activo
                         </button>
+                      )}
+                    </div>
+
+                    <div className="admin-form-grid" style={{ marginTop: '0.2rem' }}>
+                      <label className="admin-field">
+                        <span>Nombre del color</span>
                         <input
-                          type="url"
-                          name="imagen_url"
-                          value={editForm.imagen_url}
-                          onChange={handleEditFieldChange}
-                          placeholder="O pega una URL directamente"
-                          className="admin-image-url-input"
+                          type="text"
+                          value={editColorVariants[activeEditColorIndex]?.nombre || ''}
+                          onChange={(event) => updateEditColorVariantField(activeEditColorIndex, 'nombre', event.target.value)}
+                          placeholder="Ej: Negro"
                         />
+                      </label>
+                      <label className="admin-field">
+                        <span>HEX (opcional)</span>
                         <input
-                          type="url"
-                          name="imagen_url_2"
-                          value={editForm.imagen_url_2}
-                          onChange={handleEditFieldChange}
-                          placeholder="URL imagen #2"
-                          className="admin-image-url-input"
+                          type="text"
+                          value={editColorVariants[activeEditColorIndex]?.hex || ''}
+                          onChange={(event) => updateEditColorVariantField(activeEditColorIndex, 'hex', event.target.value)}
+                          placeholder="#121212"
                         />
-                        <input
-                          type="url"
-                          name="imagen_url_3"
-                          value={editForm.imagen_url_3}
-                          onChange={handleEditFieldChange}
-                          placeholder="URL imagen #3"
-                          className="admin-image-url-input"
+                      </label>
+                    </div>
+
+                    {(editColorVariants[activeEditColorIndex]?.imagen_url
+                      || editColorVariants[activeEditColorIndex]?.imagen_url_2
+                      || editColorVariants[activeEditColorIndex]?.imagen_url_3) && (
+                      <div className="admin-image-uploader" style={{ marginTop: '0.7rem' }}>
+                        <img
+                          src={editColorVariants[activeEditColorIndex]?.imagen_url || editColorVariants[activeEditColorIndex]?.imagen_url_2 || editColorVariants[activeEditColorIndex]?.imagen_url_3}
+                          alt="Vista previa del color activo"
+                          className="admin-image-preview"
                         />
                       </div>
-                    </div>
-                  </div>
-                  <label className="admin-field admin-field-wide">
-                    <span>Variantes de color (una por línea: Color|#HEX|URL imagen)</span>
-                    <textarea
-                      name="color_variants_text"
-                      value={editForm.color_variants_text}
-                      onChange={handleEditFieldChange}
-                      rows="4"
+                    )}
+
+                    <input
+                      ref={editImageInputRef}
+                      type="file"
+                      accept="image/*"
+                      style={{ display: 'none' }}
+                      onChange={handleEditImageFile}
                     />
-                    <small>Tip: usa 3 líneas para enlazar cada color con una imagen distinta en la tarjeta.</small>
-                  </label>
+
+                    <div className="admin-image-uploader-controls" style={{ marginTop: '0.65rem' }}>
+                      {[0, 1, 2].map((imageIndex) => {
+                        const field = imageFieldByIndex(imageIndex);
+                        return (
+                          <div key={`edit-image-slot-${imageIndex}`} className="admin-form-grid" style={{ marginBottom: '0.35rem' }}>
+                            <button
+                              type="button"
+                              className="admin-secondary-button"
+                              onClick={() => {
+                                setPendingEditImageSlot(imageIndex);
+                                editImageInputRef.current?.click();
+                              }}
+                              disabled={isUploadingEditImage}
+                            >
+                              {isUploadingEditImage && pendingEditImageSlot === imageIndex ? 'Subiendo...' : `Subir imagen ${imageIndex + 1}`}
+                            </button>
+                            <input
+                              type="url"
+                              value={editColorVariants[activeEditColorIndex]?.[field] || ''}
+                              onChange={(event) => updateEditColorVariantField(activeEditColorIndex, field, event.target.value)}
+                              placeholder={`URL imagen ${imageIndex + 1} del color activo`}
+                              className="admin-image-url-input"
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <small>
+                      El color activo controla su propio grupo de 3 imágenes para el carrusel.
+                    </small>
+                  </div>
                 </div>
                 <div className="admin-modal-actions">
                   <button type="button" className="admin-secondary-button" onClick={() => setEditingProduct(null)}>Cancelar</button>

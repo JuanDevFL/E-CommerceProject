@@ -49,11 +49,16 @@ function normalizeColorVariants(rawVariants, { fallbackTone, fallbackImage, imag
       if (!nombre) return null;
       const hex = String(variant.hex || '').trim();
       const imagen_url = String(variant.imagen_url || variant.image_url || variant.image || '').trim();
+      const variantImageUrls = normalizeImageUrls(
+        variant.image_urls,
+        imagen_url || imageUrls[0] || normalizedFallbackImage
+      );
 
       return {
         nombre,
         hex,
-        imagen_url: imagen_url || imageUrls[0] || normalizedFallbackImage,
+        imagen_url: variantImageUrls[0] || imagen_url || imageUrls[0] || normalizedFallbackImage,
+        image_urls: variantImageUrls,
       };
     })
     .filter(Boolean);
@@ -63,6 +68,7 @@ function normalizeColorVariants(rawVariants, { fallbackTone, fallbackImage, imag
       nombre: normalizedFallbackTone,
       hex: '',
       imagen_url: normalizedFallbackImage,
+      image_urls: normalizeImageUrls(imageUrls, normalizedFallbackImage),
     }];
   }
 
