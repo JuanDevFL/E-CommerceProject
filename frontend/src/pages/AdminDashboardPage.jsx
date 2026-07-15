@@ -172,6 +172,77 @@ const CMS_CONTENT_HELP = {
   'contacto.whatsapp': 'Contacto: Número de WhatsApp',
 };
 
+const DISCOUNT_PRESETS = [
+  {
+    label: 'Bienvenida 10%',
+    description: 'Una sola vez para clientes nuevos.',
+    values: {
+      nombre: 'Bienvenida 10%',
+      tipo: 'new_user',
+      min_order_value: '0',
+      min_quantity: '0',
+      discount_percent: '10',
+      max_uses_per_user: '1',
+      activo: true,
+      prioridad: '100',
+    },
+  },
+  {
+    label: '3 productos = 12%',
+    description: 'Ideal para aumentar unidades por pedido.',
+    values: {
+      nombre: 'Descuento por 3 productos',
+      tipo: 'quantity',
+      min_order_value: '0',
+      min_quantity: '3',
+      discount_percent: '12',
+      max_uses_per_user: '',
+      activo: true,
+      prioridad: '100',
+    },
+  },
+  {
+    label: 'Compra desde $300k = 15%',
+    description: 'Promueve tickets más altos.',
+    values: {
+      nombre: 'Compra mayor a $300.000',
+      tipo: 'quantity',
+      min_order_value: '300000',
+      min_quantity: '0',
+      discount_percent: '15',
+      max_uses_per_user: '',
+      activo: true,
+      prioridad: '100',
+    },
+  },
+];
+
+function buildDiscountSummary(rule) {
+  const percent = Number(rule?.discount_percent || 0);
+  const minOrderValue = Number(rule?.min_order_value || 0);
+  const minQuantity = Number(rule?.min_quantity || 0);
+  const maxUsesPerUser = rule?.max_uses_per_user === '' || rule?.max_uses_per_user === null
+    ? null
+    : Number(rule?.max_uses_per_user || 0);
+
+  const requirements = [];
+  if (rule?.tipo === 'new_user') {
+    requirements.push('cliente nuevo');
+  }
+  if (minOrderValue > 0) {
+    requirements.push(`pedido desde ${formatInteger(minOrderValue)} COP`);
+  }
+  if (minQuantity > 0) {
+    requirements.push(`${formatInteger(minQuantity)} producto(s)`);
+  }
+
+  const usageText = maxUsesPerUser && maxUsesPerUser > 0
+    ? ` Máximo ${formatInteger(maxUsesPerUser)} uso(s) por usuario.`
+    : ' Sin límite de uso por usuario.';
+
+  return `${formatInteger(percent)}% de descuento${requirements.length ? ` si cumple: ${requirements.join(' + ')}` : ''}.${usageText}`;
+}
+
 function formatAddress(address) {
   if (!address) {
     return null;
@@ -872,6 +943,13 @@ function AdminDashboardPage({ user, onProductCreated }) {
     }
   };
 
+  const applyDiscountPreset = (presetValues) => {
+    setDiscountForm((current) => ({
+      ...current,
+      ...presetValues,
+    }));
+  };
+
   const handleCreateDiscountRule = async () => {
     setActionError('');
     try {
@@ -1018,6 +1096,13 @@ function AdminDashboardPage({ user, onProductCreated }) {
   });
   const productTotalPages = Math.max(1, Math.ceil(filteredProducts.length / PAGE_SIZE));
   const paginatedProducts = filteredProducts.slice(productPage * PAGE_SIZE, (productPage + 1) * PAGE_SIZE);
+  const activeCreateVariant = createColorVariants[activeCreateColorIndex] || createEmptyColorVariantForm(1);
+  const activeCreateVariantImages = [
+    activeCreateVariant.imagen_url,
+    activeCreateVariant.imagen_url_2,
+    activeCreateVariant.imagen_url_3,
+  ].filter(Boolean);
+  const activeCreateVariantSummaryColor = isValidHexColor(activeCreateVariant.hex) ? activeCreateVariant.hex : 'var(--color-surface-alt)';
 
   const salesStatuses = new Set(['pago_confirmado', 'enviado', 'entregado']);
 
@@ -1804,133 +1889,124 @@ function AdminDashboardPage({ user, onProductCreated }) {
 
                     <div className="admin-field admin-field-wide">
                       <span>Colores e imágenes del producto</span>
-                      <div className="admin-inline-actions" style={{ marginBottom: '0.65rem', gap: '0.55rem', flexWrap: 'wrap' }}>
-                        {createColorVariants.map((variant, index) => (
-                          <button
-                            key={`create-color-${index}`}
-                            type="button"
-                            className="admin-secondary-button"
-                            style={{
-                              borderColor: activeCreateColorIndex === index ? 'var(--color-primary)' : undefined,
-                              color: activeCreateColorIndex === index ? 'var(--color-primary)' : undefined,
-                            }}
-                            onClick={() => setActiveCreateColorIndex(index)}
-                          >
-                            <span
-                              aria-hidden="true"
-                              style={{
-                                width: '0.7rem',
-                                height: '0.7rem',
-                                borderRadius: '9999px',
-                                marginRight: '0.45rem',
-                                display: 'inline-block',
-                                verticalAlign: 'middle',
-                                border: '1px solid color-mix(in srgb, var(--color-border) 80%, transparent)',
-                                background: isValidHexColor(variant.hex) ? variant.hex : 'var(--color-surface-alt)',
-                              }}
-                            />
-                            {variant.nombre || `Color ${index + 1}`}
-                          </button>
-                        ))}
-                        <button type="button" className="admin-secondary-button" onClick={addCreateColorVariant}>+ Añadir color</button>
-                        {createColorVariants.length > 1 && (
-                          <button
-                            type="button"
-                            className="admin-secondary-button"
-                            onClick={() => removeCreateColorVariant(activeCreateColorIndex)}
-                          >
-                            Eliminar color activo
-                          </button>
-                        )}
-                      </div>
-
-                      <div className="admin-form-grid" style={{ marginTop: '0.2rem' }}>
-                        <label className="admin-field">
-                          <span>Nombre del color</span>
-                          <input
-                            type="text"
-                            value={createColorVariants[activeCreateColorIndex]?.nombre || ''}
-                            onChange={(event) => updateCreateColorVariantField(activeCreateColorIndex, 'nombre', event.target.value)}
-                            placeholder="Ej: Negro"
-                          />
-                        </label>
-                        <label className="admin-field">
-                          <span>HEX (opcional)</span>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
-                            <span
-                              aria-hidden="true"
-                              style={{
-                                width: '1.1rem',
-                                height: '1.1rem',
-                                borderRadius: '9999px',
-                                border: '1px solid color-mix(in srgb, var(--color-border) 80%, transparent)',
-                                background: isValidHexColor(createColorVariants[activeCreateColorIndex]?.hex)
-                                  ? createColorVariants[activeCreateColorIndex]?.hex
-                                  : 'var(--color-surface-alt)',
-                                flex: '0 0 auto',
-                              }}
-                            />
-                          <input
-                            type="text"
-                            value={createColorVariants[activeCreateColorIndex]?.hex || ''}
-                            onChange={(event) => updateCreateColorVariantField(activeCreateColorIndex, 'hex', event.target.value)}
-                            placeholder="#121212"
-                          />
-                          </div>
-                        </label>
-                      </div>
-
-                      {(createColorVariants[activeCreateColorIndex]?.imagen_url
-                        || createColorVariants[activeCreateColorIndex]?.imagen_url_2
-                        || createColorVariants[activeCreateColorIndex]?.imagen_url_3) && (
-                        <div className="admin-image-uploader" style={{ marginTop: '0.7rem' }}>
-                          <img
-                            src={createColorVariants[activeCreateColorIndex]?.imagen_url || createColorVariants[activeCreateColorIndex]?.imagen_url_2 || createColorVariants[activeCreateColorIndex]?.imagen_url_3}
-                            alt="Vista previa del color activo"
-                            className="admin-image-preview"
-                          />
-                        </div>
-                      )}
-
-                      <input
-                        ref={createImageInputRef}
-                        type="file"
-                        accept="image/*"
-                        style={{ display: 'none' }}
-                        onChange={handleCreateImageFile}
-                      />
-
-                      <div className="admin-image-uploader-controls" style={{ marginTop: '0.65rem' }}>
-                        {[0, 1, 2].map((imageIndex) => {
-                          const field = imageFieldByIndex(imageIndex);
-                          return (
-                            <div key={`create-image-slot-${imageIndex}`} className="admin-form-grid" style={{ marginBottom: '0.35rem' }}>
+                      <div className="admin-color-builder-grid">
+                        <div className="admin-color-builder-main">
+                          <div className="admin-color-chip-row">
+                            {createColorVariants.map((variant, index) => (
                               <button
+                                key={`create-color-${index}`}
                                 type="button"
-                                className="admin-secondary-button"
-                                onClick={() => {
-                                  setPendingCreateImageSlot(imageIndex);
-                                  createImageInputRef.current?.click();
-                                }}
-                                disabled={isUploadingCreateImage}
+                                className={`admin-color-chip ${activeCreateColorIndex === index ? 'is-active' : ''}`}
+                                onClick={() => setActiveCreateColorIndex(index)}
                               >
-                                {isUploadingCreateImage && pendingCreateImageSlot === imageIndex ? 'Subiendo...' : `Subir imagen ${imageIndex + 1}`}
+                                <span
+                                  className="admin-color-chip-dot"
+                                  aria-hidden="true"
+                                  style={{ background: isValidHexColor(variant.hex) ? variant.hex : 'var(--color-surface-alt)' }}
+                                />
+                                {variant.nombre || `Color ${index + 1}`}
                               </button>
-                              <input
-                                type="url"
-                                value={createColorVariants[activeCreateColorIndex]?.[field] || ''}
-                                onChange={(event) => updateCreateColorVariantField(activeCreateColorIndex, field, event.target.value)}
-                                placeholder={`URL imagen ${imageIndex + 1} del color activo`}
-                                className="admin-image-url-input"
-                              />
-                            </div>
-                          );
-                        })}
-                      </div>
+                            ))}
+                          </div>
 
-                      <small>
-                        Si agregas 2 colores, verás 2 botones. Si agregas 3 colores, verás 3 botones. Cada color puede tener hasta 3 imágenes.
-                      </small>
+                          <div className="admin-color-chip-actions">
+                            <button type="button" className="admin-secondary-button" onClick={addCreateColorVariant}>+ Añadir color</button>
+                            {createColorVariants.length > 1 && (
+                              <button type="button" className="admin-secondary-button" onClick={() => removeCreateColorVariant(activeCreateColorIndex)}>
+                                Eliminar color activo
+                              </button>
+                            )}
+                          </div>
+
+                          <div className="admin-form-grid admin-color-fields-grid">
+                            <label className="admin-field">
+                              <span>Nombre del color</span>
+                              <input
+                                type="text"
+                                value={activeCreateVariant.nombre || ''}
+                                onChange={(event) => updateCreateColorVariantField(activeCreateColorIndex, 'nombre', event.target.value)}
+                                placeholder="Ej: Negro"
+                              />
+                            </label>
+                            <label className="admin-field">
+                              <span>HEX (opcional)</span>
+                              <div className="admin-color-input-wrap">
+                                <span className="admin-color-preview-dot" aria-hidden="true" style={{ background: activeCreateVariantSummaryColor }} />
+                                <input
+                                  type="text"
+                                  value={activeCreateVariant.hex || ''}
+                                  onChange={(event) => updateCreateColorVariantField(activeCreateColorIndex, 'hex', event.target.value)}
+                                  placeholder="#121212"
+                                />
+                              </div>
+                            </label>
+                          </div>
+
+                          <input
+                            ref={createImageInputRef}
+                            type="file"
+                            accept="image/*"
+                            style={{ display: 'none' }}
+                            onChange={handleCreateImageFile}
+                          />
+
+                          <div className="admin-color-image-grid">
+                            {[0, 1, 2].map((imageIndex) => {
+                              const field = imageFieldByIndex(imageIndex);
+                              return (
+                                <div key={`create-image-slot-${imageIndex}`} className="admin-color-image-row">
+                                  <button
+                                    type="button"
+                                    className="admin-secondary-button"
+                                    onClick={() => {
+                                      setPendingCreateImageSlot(imageIndex);
+                                      createImageInputRef.current?.click();
+                                    }}
+                                    disabled={isUploadingCreateImage}
+                                  >
+                                    {isUploadingCreateImage && pendingCreateImageSlot === imageIndex ? 'Subiendo...' : `Subir imagen ${imageIndex + 1}`}
+                                  </button>
+                                  <input
+                                    type="url"
+                                    value={activeCreateVariant[field] || ''}
+                                    onChange={(event) => updateCreateColorVariantField(activeCreateColorIndex, field, event.target.value)}
+                                    placeholder={`URL imagen ${imageIndex + 1} del color activo`}
+                                    className="admin-image-url-input"
+                                  />
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        <aside className="admin-color-side-card" aria-label="Resumen del color activo">
+                          <div className="admin-color-side-head">
+                            <span className="admin-color-preview-dot" aria-hidden="true" style={{ background: activeCreateVariantSummaryColor }} />
+                            <div>
+                              <strong>{activeCreateVariant.nombre || `Color ${activeCreateColorIndex + 1}`}</strong>
+                              <small>{activeCreateVariant.hex || 'Sin HEX definido'}</small>
+                            </div>
+                          </div>
+
+                          <p>
+                            Este color tiene {activeCreateVariantImages.length} imagen(es) cargadas.
+                          </p>
+
+                          {activeCreateVariantImages.length > 0 ? (
+                            <div className="admin-color-side-gallery">
+                              {activeCreateVariantImages.map((imageUrl, index) => (
+                                <img key={`${imageUrl}-${index}`} src={imageUrl} alt={`Vista previa ${index + 1} del color activo`} loading="lazy" referrerPolicy="no-referrer" />
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="admin-color-side-empty">Aún no hay imágenes para este color.</p>
+                          )}
+
+                          <small className="admin-color-side-tip">
+                            Ejemplo: crea "Miel", agrega su HEX y carga 3 fotos para mostrar su mini carrusel en tienda.
+                          </small>
+                        </aside>
+                      </div>
                     </div>
                   </div>
 
@@ -2808,27 +2884,80 @@ function AdminDashboardPage({ user, onProductCreated }) {
 
                     <div className="admin-cms-block">
                       <h3 className="admin-cms-subtitle">Descuentos automáticos</h3>
-                      <p className="admin-cms-label" style={{ textTransform: 'none', letterSpacing: 'normal' }}>
-                        Crea reglas por usuario nuevo o por cantidad de pedido. Puedes encender/apagar cada regla cuando quieras.
+                      <p className="admin-discount-intro">
+                        Define reglas simples para que el cliente vea el descuento automáticamente en checkout.
                       </p>
 
-                      <div className="admin-cms-slide-edit">
-                        <input className="admin-input" placeholder="Nombre del descuento" value={discountForm.nombre} onChange={(e) => setDiscountForm((prev) => ({ ...prev, nombre: e.target.value }))} />
-                        <select className="admin-input" value={discountForm.tipo} onChange={(e) => setDiscountForm((prev) => ({ ...prev, tipo: e.target.value }))}>
+                      <div className="admin-discount-help-card">
+                        <strong>Cómo usarlo en 3 pasos</strong>
+                        <ol>
+                          <li>Elige una plantilla rápida o crea la regla manualmente.</li>
+                          <li>Configura condición mínima y porcentaje.</li>
+                          <li>Guarda y deja la regla en Encendido para activarla.</li>
+                        </ol>
+                        <p>
+                          Ejemplo: "Bienvenida 10%" + "Máx. usos por usuario = 1" aplica solo una vez por cliente nuevo.
+                        </p>
+                      </div>
+
+                      <div className="admin-discount-preset-row">
+                        {DISCOUNT_PRESETS.map((preset) => (
+                          <button
+                            key={preset.label}
+                            type="button"
+                            className="admin-secondary-button"
+                            title={preset.description}
+                            onClick={() => applyDiscountPreset(preset.values)}
+                          >
+                            {preset.label}
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="admin-cms-slide-edit admin-discount-form-grid">
+                        <label className="admin-field">
+                          <span>Nombre de la regla</span>
+                          <input className="admin-input" placeholder="Ej: Bienvenida 10%" value={discountForm.nombre} onChange={(e) => setDiscountForm((prev) => ({ ...prev, nombre: e.target.value }))} />
+                        </label>
+
+                        <label className="admin-field">
+                          <span>Tipo de descuento</span>
+                          <select className="admin-input" value={discountForm.tipo} onChange={(e) => setDiscountForm((prev) => ({ ...prev, tipo: e.target.value }))}>
                           <option value="new_user">Nuevo usuario (uso único)</option>
                           <option value="quantity">Por cantidad de pedido</option>
                         </select>
-                        <input className="admin-input" type="number" min="0" placeholder="Monto mínimo del pedido" value={discountForm.min_order_value} onChange={(e) => setDiscountForm((prev) => ({ ...prev, min_order_value: e.target.value }))} />
-                        <input className="admin-input" type="number" min="0" placeholder="Cantidad mínima de productos" value={discountForm.min_quantity} onChange={(e) => setDiscountForm((prev) => ({ ...prev, min_quantity: e.target.value }))} />
-                        <input className="admin-input" type="number" min="1" max="90" placeholder="% descuento" value={discountForm.discount_percent} onChange={(e) => setDiscountForm((prev) => ({ ...prev, discount_percent: e.target.value }))} />
-                        <input className="admin-input" type="number" min="1" placeholder="Máx. usos por usuario (vacío = sin límite)" value={discountForm.max_uses_per_user} onChange={(e) => setDiscountForm((prev) => ({ ...prev, max_uses_per_user: e.target.value }))} />
-                        <label className="admin-field" style={{ marginTop: '-0.2rem' }}>
-                          <span>Activo</span>
+                        </label>
+
+                        <label className="admin-field">
+                          <span>Monto mínimo del pedido (COP)</span>
+                          <input className="admin-input" type="number" min="0" placeholder="Ej: 300000" value={discountForm.min_order_value} onChange={(e) => setDiscountForm((prev) => ({ ...prev, min_order_value: e.target.value }))} />
+                        </label>
+
+                        <label className="admin-field">
+                          <span>Cantidad mínima de productos</span>
+                          <input className="admin-input" type="number" min="0" placeholder="Ej: 3" value={discountForm.min_quantity} onChange={(e) => setDiscountForm((prev) => ({ ...prev, min_quantity: e.target.value }))} />
+                        </label>
+
+                        <label className="admin-field">
+                          <span>Porcentaje de descuento</span>
+                          <input className="admin-input" type="number" min="1" max="90" placeholder="Ej: 10" value={discountForm.discount_percent} onChange={(e) => setDiscountForm((prev) => ({ ...prev, discount_percent: e.target.value }))} />
+                        </label>
+
+                        <label className="admin-field">
+                          <span>Máx. usos por usuario</span>
+                          <input className="admin-input" type="number" min="1" placeholder="Vacío = sin límite" value={discountForm.max_uses_per_user} onChange={(e) => setDiscountForm((prev) => ({ ...prev, max_uses_per_user: e.target.value }))} />
+                        </label>
+
+                        <label className="admin-field">
+                          <span>Estado</span>
                           <select className="admin-input" value={discountForm.activo ? 'true' : 'false'} onChange={(e) => setDiscountForm((prev) => ({ ...prev, activo: e.target.value === 'true' }))}>
                             <option value="true">Encendido</option>
                             <option value="false">Apagado</option>
                           </select>
                         </label>
+
+                        <p className="admin-discount-preview">Vista rápida: {buildDiscountSummary(discountForm)}</p>
+
                         <button type="button" className="btn-primary text-sm px-5 py-2.5 rounded-full" onClick={handleCreateDiscountRule}>+ Añadir descuento</button>
                       </div>
 
@@ -2837,6 +2966,7 @@ function AdminDashboardPage({ user, onProductCreated }) {
                           <div key={rule.id} className="admin-cms-slide-row" style={{ gridTemplateColumns: '1fr' }}>
                             <div className="admin-cms-slide-edit">
                               <input className="admin-input" value={rule.nombre} onChange={(e) => setDiscountRules((prev) => prev.map((item) => (item.id === rule.id ? { ...item, nombre: e.target.value } : item)))} />
+                              <p className="admin-discount-preview">{buildDiscountSummary(rule)}</p>
                               <div className="admin-cms-slide-btns">
                                 <select className="admin-input" value={rule.tipo} onChange={(e) => setDiscountRules((prev) => prev.map((item) => (item.id === rule.id ? { ...item, tipo: e.target.value } : item)))}>
                                   <option value="new_user">Nuevo usuario</option>
