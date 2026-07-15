@@ -331,6 +331,21 @@
   gap: 1rem;
 }
 
+.admin-product-create-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.admin-product-main-column,
+.admin-product-color-column {
+  border: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent 30%);
+  border-radius: 1.2rem;
+  background: color-mix(in srgb, var(--color-background-alt) 76%, transparent 24%);
+  padding: 0.95rem;
+}
+
 .admin-form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -421,6 +436,13 @@
   display: grid;
   gap: 0.75rem;
   align-content: start;
+}
+
+.admin-color-side-panel.is-boxed {
+  border-radius: 1rem;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 35%, var(--color-border) 65%);
+  background: linear-gradient(155deg, color-mix(in srgb, var(--color-primary) 10%, transparent), color-mix(in srgb, var(--color-background-alt) 88%, transparent));
+  padding: 0.85rem;
 }
 
 .admin-color-side-head {
@@ -800,7 +822,8 @@
   .admin-form-grid,
   .admin-order-detail-grid,
   .admin-color-builder-grid,
-  .admin-color-image-row {
+  .admin-color-image-row,
+  .admin-product-create-layout {
     grid-template-columns: 1fr;
   }
 

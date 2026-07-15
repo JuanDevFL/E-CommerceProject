@@ -1846,48 +1846,53 @@ function AdminDashboardPage({ user, onProductCreated }) {
                       Cargar demo PRUEBA IMG
                     </button>
                   </div>
-                  <div className="admin-form-grid">
-                    <label className="admin-field admin-field-wide">
-                      <span>Nombre</span>
-                      <input type="text" name="nombre" value={productForm.nombre} onChange={handleProductFieldChange} placeholder="Bolso Azami Atelier" required />
-                    </label>
+                  <div className="admin-product-create-layout">
+                    <div className="admin-product-main-column">
+                      <div className="admin-form-grid">
+                        <label className="admin-field admin-field-wide">
+                          <span>Nombre</span>
+                          <input type="text" name="nombre" value={productForm.nombre} onChange={handleProductFieldChange} placeholder="Bolso Azami Atelier" required />
+                        </label>
 
-                    <label className="admin-field admin-field-wide">
-                      <span>Descripción</span>
-                      <textarea name="descripcion" value={productForm.descripcion} onChange={handleProductFieldChange} placeholder="Detalle editorial del producto" rows="4" />
-                    </label>
+                        <label className="admin-field admin-field-wide">
+                          <span>Descripción</span>
+                          <textarea name="descripcion" value={productForm.descripcion} onChange={handleProductFieldChange} placeholder="Detalle editorial del producto" rows="4" />
+                        </label>
 
-                    <label className="admin-field">
-                      <span>Precio (COP)</span>
-                      <input type="number" min="1000" step="1000" name="precio" value={productForm.precio} onChange={handleProductFieldChange} placeholder="1080000" required />
-                    </label>
+                        <label className="admin-field">
+                          <span>Precio (COP)</span>
+                          <input type="number" min="1000" step="1000" name="precio" value={productForm.precio} onChange={handleProductFieldChange} placeholder="1080000" required />
+                        </label>
 
-                    <label className="admin-field">
-                      <span>Stock</span>
-                      <input type="number" min="0" step="1" name="stock" value={productForm.stock} onChange={handleProductFieldChange} placeholder="12" />
-                    </label>
+                        <label className="admin-field">
+                          <span>Stock</span>
+                          <input type="number" min="0" step="1" name="stock" value={productForm.stock} onChange={handleProductFieldChange} placeholder="12" />
+                        </label>
 
-                    <label className="admin-field">
-                      <span>Categoría</span>
-                      <input type="text" name="categoria" value={productForm.categoria} onChange={handleProductFieldChange} placeholder="Colección Atelier" />
-                    </label>
+                        <label className="admin-field">
+                          <span>Categoría</span>
+                          <input type="text" name="categoria" value={productForm.categoria} onChange={handleProductFieldChange} placeholder="Colección Atelier" />
+                        </label>
 
-                    <label className="admin-field">
-                      <span>Tono</span>
-                      <input type="text" name="tono" value={productForm.tono} onChange={handleProductFieldChange} placeholder="Marfil" />
-                    </label>
+                        <label className="admin-field">
+                          <span>Tono</span>
+                          <input type="text" name="tono" value={productForm.tono} onChange={handleProductFieldChange} placeholder="Marfil" />
+                        </label>
 
-                    <label className="admin-field">
-                      <span>Material</span>
-                      <input type="text" name="material" value={productForm.material} onChange={handleProductFieldChange} placeholder="Cuero premium" />
-                    </label>
+                        <label className="admin-field">
+                          <span>Material</span>
+                          <input type="text" name="material" value={productForm.material} onChange={handleProductFieldChange} placeholder="Cuero premium" />
+                        </label>
 
-                    <label className="admin-field">
-                      <span>Etiqueta</span>
-                      <input type="text" name="etiqueta" value={productForm.etiqueta} onChange={handleProductFieldChange} placeholder="Lanzamiento" />
-                    </label>
+                        <label className="admin-field">
+                          <span>Etiqueta</span>
+                          <input type="text" name="etiqueta" value={productForm.etiqueta} onChange={handleProductFieldChange} placeholder="Lanzamiento" />
+                        </label>
+                      </div>
+                    </div>
 
-                    <div className="admin-field admin-field-wide">
+                    <div className="admin-product-color-column">
+                      <div className="admin-field">
                       <span>Colores e imágenes del producto</span>
                       <div className="admin-color-builder-grid">
                         <div className="admin-color-builder-main">
@@ -1979,7 +1984,7 @@ function AdminDashboardPage({ user, onProductCreated }) {
                           </div>
                         </div>
 
-                        <aside className="admin-color-side-panel" aria-label="Resumen del color activo">
+                        <aside className="admin-color-side-panel is-boxed" aria-label="Resumen del color activo">
                           <div className="admin-color-side-head">
                             <span className="admin-color-preview-dot" aria-hidden="true" style={{ background: activeCreateVariantSummaryColor }} />
                             <div>
@@ -2007,6 +2012,7 @@ function AdminDashboardPage({ user, onProductCreated }) {
                           </small>
                         </aside>
                       </div>
+                    </div>
                     </div>
                   </div>
 
