@@ -42,6 +42,25 @@ const initialProductForm = {
   etiqueta: '',
 };
 
+const pruebaImgPreset = {
+  nombre: 'PRUEBA IMG',
+  descripcion: 'Producto demo para validar mini carrusel y cambio de imagen al seleccionar color.',
+  precio: '299000',
+  imagen_url: 'https://images.pexels.com/photos/1152077/pexels-photo-1152077.jpeg?auto=compress&cs=tinysrgb&w=1600',
+  imagen_url_2: 'https://images.pexels.com/photos/1038000/pexels-photo-1038000.jpeg?auto=compress&cs=tinysrgb&w=1600',
+  imagen_url_3: 'https://images.pexels.com/photos/1374910/pexels-photo-1374910.jpeg?auto=compress&cs=tinysrgb&w=1600',
+  color_variants_text: [
+    'Negro|#121212|https://images.pexels.com/photos/1152077/pexels-photo-1152077.jpeg?auto=compress&cs=tinysrgb&w=1600',
+    'Marfil|#F6F0E6|https://images.pexels.com/photos/1038000/pexels-photo-1038000.jpeg?auto=compress&cs=tinysrgb&w=1600',
+    'Verde oliva|#556B2F|https://images.pexels.com/photos/1374910/pexels-photo-1374910.jpeg?auto=compress&cs=tinysrgb&w=1600',
+  ].join('\n'),
+  stock: '12',
+  categoria: 'Cross Body',
+  tono: 'Negro',
+  material: 'Cuero premium',
+  etiqueta: 'Prueba carousel',
+};
+
 function formatInteger(value) {
   return new Intl.NumberFormat('es-MX', {
     maximumFractionDigits: 0,
@@ -429,6 +448,20 @@ function AdminDashboardPage({ user, onProductCreated }) {
   const handleEditFieldChange = (event) => {
     const { name, value } = event.target;
     setEditForm((current) => ({ ...current, [name]: value }));
+  };
+
+  const applyPruebaPresetToCreate = () => {
+    setProductForm((current) => ({
+      ...current,
+      ...pruebaImgPreset,
+    }));
+  };
+
+  const applyPruebaPresetToEdit = () => {
+    setEditForm((current) => ({
+      ...current,
+      ...pruebaImgPreset,
+    }));
   };
 
   const handleCreateImageFile = async (event) => {
@@ -1502,6 +1535,11 @@ function AdminDashboardPage({ user, onProductCreated }) {
                 </div>
 
                 <form className="admin-product-form" onSubmit={handleCreateProduct}>
+                  <div className="admin-inline-actions" style={{ marginBottom: '0.75rem' }}>
+                    <button type="button" className="admin-secondary-button" onClick={applyPruebaPresetToCreate}>
+                      Cargar demo PRUEBA IMG
+                    </button>
+                  </div>
                   <div className="admin-form-grid">
                     <label className="admin-field admin-field-wide">
                       <span>Nombre</span>
@@ -1606,6 +1644,7 @@ function AdminDashboardPage({ user, onProductCreated }) {
                         placeholder={"Ej: Negro|#121212|https://...\nMarfil|#F6F0E6|https://..."}
                         rows="4"
                       />
+                      <small>Para probar el mini carrusel, registra 3 imágenes y asigna una URL por color.</small>
                     </label>
                   </div>
 
@@ -2157,6 +2196,11 @@ function AdminDashboardPage({ user, onProductCreated }) {
                 <button type="button" className="admin-modal-close" onClick={() => setEditingProduct(null)}>✕</button>
               </div>
               <form className="admin-product-form" onSubmit={handleSaveEdit}>
+                <div className="admin-inline-actions" style={{ marginBottom: '0.75rem' }}>
+                  <button type="button" className="admin-secondary-button" onClick={applyPruebaPresetToEdit}>
+                    Aplicar demo PRUEBA IMG
+                  </button>
+                </div>
                 <div className="admin-form-grid">
                   <label className="admin-field admin-field-wide">
                     <span>Nombre</span>
@@ -2251,6 +2295,7 @@ function AdminDashboardPage({ user, onProductCreated }) {
                       onChange={handleEditFieldChange}
                       rows="4"
                     />
+                    <small>Tip: usa 3 líneas para enlazar cada color con una imagen distinta en la tarjeta.</small>
                   </label>
                 </div>
                 <div className="admin-modal-actions">
